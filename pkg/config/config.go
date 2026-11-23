@@ -10,20 +10,28 @@ const (
 	// DefaultUA is intentionally empty: an empty user agent means rad uses the
 	// real UA of the browser it drives instead of claiming to be some fixed
 	// Chrome version. Set user_agent in rad_config.yml to override it.
-	DefaultUA               = ""
-	MaxTabsCount            = 10
-	TabRunTimeout           = 20 * time.Second
-	DefaultInputText        = "Rad"
-	FormInputKeyword        = "Rad"
-	SuspectURLRegex         = `(?:"|')(((?:[a-zA-Z]{1,10}://|//)[^"'/]{1,}\.[a-zA-Z]{2,}[^"']{0,})|((?:/|\.\./|\./)[^"'><,;|*()(%%$^/\\\[\]][^"'><,;|()]{1,})|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{1,}\.(?:[a-zA-Z]{1,4}|action)(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{3,}(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-]{1,}\.(?:php|asp|aspx|jsp|json|action|html|js|txt|xml)(?:[\?|#][^"|']{0,}|)))(?:"|')`
-	URLRegex                = `((https?|ftp|file):)?//[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]`
-	AttrURLRegex            = ``
-	DomContentLoadedTimeout = 5 * time.Second
-	EventTriggerInterval    = 100 * time.Millisecond // 单位毫秒
-	BeforeExitDelay         = 1 * time.Second
-	DefaultEventTriggerMode = EventTriggerAsync
-	MaxCrawlCount           = 200
-	MaxRunTime              = 60 * 60
+	DefaultUA    = ""
+	MaxTabsCount = 10
+	// MaxTabsCeiling is the hard upper bound on concurrent tabs. chaitin/rad's
+	// config documents max_page_concurrent as "not greater than 10"; values
+	// above it are clamped rather than silently over-provisioning browsers.
+	MaxTabsCeiling = 10
+	// DefaultPageAnalyzeTimeout bounds page analysis when the config omits
+	// page_analyze_timeout_second. It mirrors chaitin/rad's default so an
+	// absent key behaves the same as the documented value.
+	DefaultPageAnalyzeTimeout = 300 * time.Second
+	TabRunTimeout             = 20 * time.Second
+	DefaultInputText          = "Rad"
+	FormInputKeyword          = "Rad"
+	SuspectURLRegex           = `(?:"|')(((?:[a-zA-Z]{1,10}://|//)[^"'/]{1,}\.[a-zA-Z]{2,}[^"']{0,})|((?:/|\.\./|\./)[^"'><,;|*()(%%$^/\\\[\]][^"'><,;|()]{1,})|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{1,}\.(?:[a-zA-Z]{1,4}|action)(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{3,}(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-]{1,}\.(?:php|asp|aspx|jsp|json|action|html|js|txt|xml)(?:[\?|#][^"|']{0,}|)))(?:"|')`
+	URLRegex                  = `((https?|ftp|file):)?//[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]`
+	AttrURLRegex              = ``
+	DomContentLoadedTimeout   = 5 * time.Second
+	EventTriggerInterval      = 100 * time.Millisecond // 单位毫秒
+	BeforeExitDelay           = 1 * time.Second
+	DefaultEventTriggerMode   = EventTriggerAsync
+	MaxCrawlCount             = 200
+	MaxRunTime                = 60 * 60
 )
 
 // 请求方法

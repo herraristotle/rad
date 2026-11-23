@@ -199,8 +199,9 @@ Keys (all optional):
 | `navigate_timeout_second` | `10` | Navigation timeout |
 | `load_timeout_second` | `10` | Page-load timeout |
 | `retry` | `0` | Navigation retries after a failure |
+| `page_analyze_timeout_second` | `300` | Per-page analysis budget; also applies when the key is omitted |
 | `max_interactive` | `1000` | Maximum element interactions per page |
-| `max_page_concurrent` | `10` | Maximum concurrent pages |
+| `max_page_concurrent` | `10` | Maximum concurrent pages; values above 10 are clamped to 10 |
 | `max_page_visit` | `1000` | Total pages allowed |
 | `max_page_visit_per_site` | `1000` | Pages allowed per site |
 | `subdomain` | `true` | Crawl subdomains automatically |

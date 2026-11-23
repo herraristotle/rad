@@ -53,7 +53,30 @@ type tabTask struct {
 *
 新建爬虫任务
 */
+// normalizeLimits applies the documented bounds so every entry point (CLI
+// flags, the YAML config and library callers) behaves the same:
+//
+//   - max_page_concurrent is documented as "not greater than 10" and is clamped
+//     to that ceiling rather than silently over-provisioning browsers.
+//   - page_analyze_timeout_second defaults to 300s when omitted, so page
+//     analysis is always bounded.
+func normalizeLimits(taskConf *TaskConfig) {
+	if taskConf.MaxTabsCount > config.MaxTabsCeiling {
+		logger.Logger.Warnf("max tab count %d exceeds the supported ceiling, using %d",
+			taskConf.MaxTabsCount, config.MaxTabsCeiling)
+		taskConf.MaxTabsCount = config.MaxTabsCeiling
+	}
+	if taskConf.MaxTabsCount <= 0 {
+		taskConf.MaxTabsCount = config.MaxTabsCount
+	}
+	if taskConf.PageAnalyzeTimeout <= 0 {
+		taskConf.PageAnalyzeTimeout = config.DefaultPageAnalyzeTimeout
+	}
+}
+
 func NewCrawlerTask(targets []*model.Request, taskConf TaskConfig) (*CrawlerTask, error) {
+	normalizeLimits(&taskConf)
+
 	crawlerTask := CrawlerTask{
 		Result:     &Result{},
 		Config:     &taskConf,

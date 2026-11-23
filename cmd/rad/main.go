@@ -207,8 +207,10 @@ func run(c *cli.Context) error {
 		os.Exit(-1)
 	}
 	if len(crawlTargets) != 0 {
+		// Report the effective values, which NewCrawlerTask may have clamped,
+		// so the log never claims more concurrency than is actually used.
 		logger.Logger.Infof("Init crawler task, host: %s, max tab count: %d, max crawl count: %d, max runtime: %ds",
-			crawlTargets[0].URL.Host, taskConfig.MaxTabsCount, taskConfig.MaxCrawlCount, taskConfig.MaxRunTime)
+			crawlTargets[0].URL.Host, task.Config.MaxTabsCount, task.Config.MaxCrawlCount, task.Config.MaxRunTime)
 		logger.Logger.Info("filter mode: ", taskConfig.FilterMode)
 	}
 
@@ -466,7 +468,11 @@ func applyConfig(c *cli.Context, cfg *rconfig.Config) {
 	taskConfig.ForceSandbox = cfg.ForceSandbox
 	taskConfig.ParentPathDetect = cfg.ParentPathDetect
 	taskConfig.ElementFilterStrength = cfg.ElementFilterStrength
-	taskConfig.PageAnalyzeTimeout = time.Duration(cfg.PageAnalyzeTimeoutSecond) * time.Second
+	// page_analyze_timeout_second is documented as a 300s default; honour that
+	// when the key is omitted instead of leaving the budget unbounded.
+	if cfg.PageAnalyzeTimeoutSecond > 0 {
+		taskConfig.PageAnalyzeTimeout = time.Duration(cfg.PageAnalyzeTimeoutSecond) * time.Second
+	}
 	taskConfig.MaxSimilarRequest = cfg.MaxSimilarRequest
 	taskConfig.EntranceRetry = cfg.EntranceRetry
 	taskConfig.Subdomain = cfg.Subdomain
