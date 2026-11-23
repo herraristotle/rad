@@ -50,8 +50,7 @@ func (tab *Tab) InterceptRequest(v *fetch.EventRequestPaused) {
 
 	tab.HandleHostBinding(&req)
 
-	// 静态资源 全部阻断
-	// https://github.com/Qianlitp/crawlergo/issues/106
+	// Block every static resource so it never counts as a crawl target
 	if config.StaticSuffixSet.Contains(url.FileExt()) {
 		_ = fetch.FailRequest(v.RequestID, network.ErrorReasonBlockedByClient).Do(ctx)
 		req.Source = config.FromStaticRes

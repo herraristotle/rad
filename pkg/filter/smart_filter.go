@@ -578,7 +578,7 @@ func (s *SmartFilter) calcFragmentID(fragment string) string {
 		logger.Logger.Error("cannot calculate url fragment: ", err)
 		return ""
 	}
-	// XXX: discuss https://github.com/Qianlitp/crawlergo/issues/100
+	// XXX: the fragment is marked with a throwaway request and never counted
 	fakeReq := model.GetRequest(config.GET, fakeUrl)
 	s.getMark(&fakeReq)
 	// s.repeatCountStatistic(&fakeReq)

@@ -43,7 +43,7 @@ make build_all
 
 1. rad relies only on the chrome environment to run, go to [download](https://www.chromium.org/getting-involved/download-chromium) for the new version of chromium.
 2. Build rad with `make build`; the binary lands in `./bin/rad`. Copy it to any directory. If you are on linux or macOS, please give rad **executable permissions (+x)**.
-3. Prebuilt releases of upstream crawlergo exist on [its release page](https://github.com/0Kee-Team/crawlergo/releases), but they ship a binary named `crawlergo` — build from this repo to get `rad`.
+3. Prebuilt binaries are published on this repository's [releases page](https://github.com/herraristotle/rad/releases); the binary is named `rad`. You can also build from source as above.
 
 > If you are using a linux system and chrome prompts you with missing dependencies, please see TroubleShooting below
 

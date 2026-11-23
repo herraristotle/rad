@@ -44,7 +44,7 @@ func SetChromePath() *cli.PathFlag {
 		Aliases:     []string{"c"},
 		Usage:       "`Path` of chromium executable. Such as \"/home/test/chrome-linux/chrome\"",
 		Destination: &taskConfig.ChromiumPath,
-		EnvVars:     []string{"RAD_CHROMIUM_PATH", "CRAWLERGO_CHROMIUM_PATH"},
+		EnvVars:     []string{"RAD_CHROMIUM_PATH"},
 	}
 }
 
@@ -54,7 +54,7 @@ func SetChromeWSUrl() *cli.StringFlag {
 		Aliases:     []string{"w"},
 		Usage:       "`URL` of chromium websockets debugger. Please note that any chromium flags specified will not apply when using this option. Such as \"ws://127.0.0.1:9222/devtools/browser/94b947d7-2a08-4cee-8e21-d77055e8c465\"",
 		Destination: &taskConfig.ChromiumWSUrl,
-		EnvVars:     []string{"RAD_CHROME_WS_URL", "CRAWLERGO_CHROME_WS_URL"},
+		EnvVars:     []string{"RAD_CHROME_WS_URL"},
 	}
 }
 

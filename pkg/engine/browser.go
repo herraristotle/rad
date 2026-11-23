@@ -101,16 +101,20 @@ func ConnectBrowser(wsUrl string, extraHeaders map[string]interface{}) *Browser 
 
 func (bro *Browser) NewTab(timeout time.Duration) (*context.Context, context.CancelFunc) {
 	bro.lock.Lock()
-	ctx, cancel := chromedp.NewContext(*bro.Ctx)
-	//defer cancel()
-	tCtx, _ := context.WithTimeout(ctx, timeout)
-	bro.tabs = append(bro.tabs, &tCtx)
-	bro.tabCancels = append(bro.tabCancels, cancel)
-	//defer cancel2()
-	bro.lock.Unlock()
+	defer bro.lock.Unlock()
 
-	//return bro.Ctx, &cancel
-	return &tCtx, cancel
+	ctx, cancel := chromedp.NewContext(*bro.Ctx)
+	tCtx, cancelTimeout := context.WithTimeout(ctx, timeout)
+	bro.tabs = append(bro.tabs, &tCtx)
+	// Release the timeout context and then the chromedp context, so neither
+	// is leaked for the lifetime of the browser. Safe to call more than once.
+	cancelTab := func() {
+		cancelTimeout()
+		cancel()
+	}
+	bro.tabCancels = append(bro.tabCancels, cancelTab)
+
+	return &tCtx, cancelTab
 }
 
 func (bro *Browser) Close() {

@@ -43,7 +43,7 @@ make build_all
 
 1. rad 只依赖chrome运行即可，前往[下载](https://www.chromium.org/getting-involved/download-chromium)新版本的chromium。
 2. 在本仓库执行 `make build` 编译，产物为 `./bin/rad`，复制到任意目录即可。如果是linux或者macOS系统，请赋予rad**可执行权限(+x)**。
-3. 上游 crawlergo 的[发布页](https://github.com/0Kee-Team/crawlergo/releases)提供预编译包，但二进制名为 `crawlergo`；需要 `rad` 请从本仓库编译。
+3. 预编译二进制发布在本仓库的[发布页](https://github.com/herraristotle/rad/releases)，二进制名为 `rad`，也可以按上面的方式从源码编译。
 
 > 如果你使用linux系统，运行时chrome提示缺少一些依赖组件，请看下方 Trouble Shooting
 

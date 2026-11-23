@@ -10,7 +10,7 @@ import (
 )
 
 func TestTaskConfigOptFunc(t *testing.T) {
-	// 测试 https://github.com/Qianlitp/crawlergo/pull/101 修改的代码
+	// Custom form values must not be overwritten by the defaults
 	var taskConf pkg.TaskConfig
 	for _, fn := range []pkg.TaskConfigOptFunc{
 		pkg.WithTabRunTimeout(config.TabRunTimeout),
