@@ -48,7 +48,7 @@ var cliFlags = []cli.Flag{
 func SetChromePath() *cli.PathFlag {
 	return &cli.PathFlag{
 		Name:        "chromium-path",
-		Aliases:     []string{"c"},
+		Aliases:     []string{"chrome"},
 		Usage:       "`Path` of chromium executable. Such as \"/home/test/chrome-linux/chrome\"",
 		Destination: &taskConfig.ChromiumPath,
 		EnvVars:     []string{"RAD_CHROMIUM_PATH"},
@@ -305,7 +305,7 @@ func SetMaxTime() *cli.Int64Flag {
 func SetConfigFile() *cli.PathFlag {
 	return &cli.PathFlag{
 		Name:        "config",
-		Aliases:     []string{"C"},
+		Aliases:     []string{"c"},
 		Usage:       "`Path` of the YAML config file. If it does not exist, a default rad_config.yml is written and rad exits so you can review it.",
 		Destination: &configFile,
 	}

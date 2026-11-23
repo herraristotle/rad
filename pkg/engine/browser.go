@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -18,7 +19,10 @@ type Browser struct {
 	tabs         []*context.Context
 	tabCancels   []context.CancelFunc
 	ExtraHeaders map[string]interface{}
-	lock         sync.Mutex
+	// profileDir is the temporary Chrome profile owned by this browser, so it
+	// can be removed once Chrome has fully exited.
+	profileDir string
+	lock       sync.Mutex
 }
 
 // BrowserOptions carries the browser-level settings resolved from the CLI and
@@ -82,6 +86,12 @@ func InitBrowserWithOptions(o BrowserOptions) *Browser {
 
 		// 指定执行路径
 		opts = append(opts, chromedp.ExecPath(o.ChromiumPath))
+	}
+
+	// Own the profile directory so cleanup is explicit and predictable.
+	if dir, err := os.MkdirTemp("", "rad-chrome-"); err == nil {
+		bro.profileDir = dir
+		opts = append(opts, chromedp.UserDataDir(dir))
 	}
 
 	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
@@ -155,5 +165,42 @@ func (bro *Browser) Close() {
 	if err != nil {
 		logger.Logger.Debug(err)
 	}
+
 	(*bro.Cancel)()
+
+	bro.removeProfileDir()
+}
+
+// removeProfileDir deletes the temporary Chrome profile owned by this browser.
+//
+// Chrome's helper processes can recreate files fractionally after RemoveAll
+// returns, so a single successful removal is not proof the directory is gone.
+// The removal is retried until the directory stays absent across two checks, or
+// until a short deadline passes.
+func (bro *Browser) removeProfileDir() {
+	if bro.profileDir == "" {
+		return
+	}
+	dir := bro.profileDir
+	bro.profileDir = ""
+
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		err := os.RemoveAll(dir)
+		if err == nil {
+			if _, statErr := os.Stat(dir); os.IsNotExist(statErr) {
+				time.Sleep(150 * time.Millisecond)
+				if _, again := os.Stat(dir); os.IsNotExist(again) {
+					logger.Logger.Debug("removed chrome profile dir: ", dir)
+					return
+				}
+			}
+		}
+		if time.Now().After(deadline) {
+			logger.Logger.Warn("could not remove chrome profile dir ", dir,
+				"; it will be left for the system to clean up")
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 }

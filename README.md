@@ -174,13 +174,13 @@ https://intoli.com/blog/not-possible-to-block-chrome-headless/chrome-headless-te
 
 ## Configuration file
 
-rad can be driven entirely by a YAML config file. Pass `--config`/`-C` a path;
+rad can be driven entirely by a YAML config file. Pass `--config`/`-c` a path;
 if the file does not exist rad writes a fully commented default there and exits
-so you can review it first. When `-C` is omitted, `rad_config.yml` in the working
+so you can review it first. When `-c` is omitted, `rad_config.yml` in the working
 directory is used if present.
 
 ```shell
-rad -C rad_config.yml http://example.com
+rad -c rad_config.yml http://example.com
 ```
 
 Keys (all optional):
@@ -204,7 +204,7 @@ Keys (all optional):
 | `max_page_visit` | `1000` | Total pages allowed |
 | `max_page_visit_per_site` | `1000` | Pages allowed per site |
 | `subdomain` | `true` | Crawl subdomains automatically |
-| `leakless` | `true` | Experimental memory-leak guard (accepted; no-op in this engine) |
+| `leakless` | `true` | Kill Chrome if rad dies. Accepted for compatibility; rad applies the equivalent guard natively (Linux `Pdeathsig`) |
 | `entrance_retry` | `0` | Extra attempts for the entrance URL |
 | `max_similar_request` | `0` | Max similar fetch/XHR requests per site (<=0 unlimited) |
 | `element_filter_strength` | `0` | Similar-element filtering, 0 off, 1-7 increasing |
@@ -258,7 +258,7 @@ The CLI is a drop-in replacement for chaitin/rad's documented usage:
 | `-http-proxy host:port` | same (upstream proxy) |
 | `-disable-headless`, `-dh` | same |
 | `-url-file`, `-uf` | same |
-| `-config`, `-c` | same; `-C` also accepted |
+| `-config`, `-c` | same (also rad's own long form) |
 | `-no-banner` | same |
 
 Because `-t` now means *target* (as in chaitin/rad), the max-tab-count flag uses
@@ -266,9 +266,9 @@ Because `-t` now means *target* (as in chaitin/rad), the max-tab-count flag uses
 
 ## Parameters
 ### Required parameters
-* `--chromium-path Path, -c Path`    The path to the chrome executable. (**Required**)
+* `--chromium-path Path, --chrome Path`    The path to the chrome executable. (**Required**)
 ### Basic parameters
-* `--config Path, -C Path`  Path of the YAML config file. If it does not exist, a default `rad_config.yml` is written and rad exits. (Default: `./rad_config.yml` if present)
+* `--config Path, -c Path`  Path of the YAML config file. If it does not exist, a default `rad_config.yml` is written and rad exits. (Default: `./rad_config.yml` if present)
 * `--custom-headers Headers`   Customize the HTTP header. Please pass in the data after JSON serialization, this is globally defined and will be used for all requests. (Default: null)
 * `--post-data PostData, -d PostData`   POST data. (Default: null)
 * `--max-crawled-count Number, -m Number`    The maximum number of tasks for crawlers to avoid long crawling time due to pseudo-static. (Default: 200)
