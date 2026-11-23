@@ -11,16 +11,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Qianlitp/crawlergo/pkg/config"
-	"github.com/Qianlitp/crawlergo/pkg/logger"
-	model2 "github.com/Qianlitp/crawlergo/pkg/model"
-	"github.com/Qianlitp/crawlergo/pkg/tools"
-	"github.com/Qianlitp/crawlergo/pkg/tools/requests"
 	"github.com/chromedp/cdproto/fetch"
 	"github.com/chromedp/cdproto/network"
+	"github.com/herraristotle/rad/pkg/config"
+	"github.com/herraristotle/rad/pkg/logger"
+	model2 "github.com/herraristotle/rad/pkg/model"
+	"github.com/herraristotle/rad/pkg/tools"
+	"github.com/herraristotle/rad/pkg/tools/requests"
 )
 
-/**
+/*
+*
 处理每一个HTTP请求
 */
 func (tab *Tab) InterceptRequest(v *fetch.EventRequestPaused) {
@@ -72,14 +73,16 @@ func (tab *Tab) InterceptRequest(v *fetch.EventRequestPaused) {
 	_ = fetch.ContinueRequest(v.RequestID).Do(ctx)
 }
 
-/**
+/*
+*
 判断是否为导航请求
 */
 func (tab *Tab) IsNavigatorRequest(networkID string) bool {
 	return networkID == tab.LoaderID
 }
 
-/**
+/*
+*
 处理 401 407 认证弹窗
 */
 func (tab *Tab) HandleAuthRequired(req *fetch.EventAuthRequired) {
@@ -88,14 +91,15 @@ func (tab *Tab) HandleAuthRequired(req *fetch.EventAuthRequired) {
 	ctx := tab.GetExecutor()
 	authRes := fetch.AuthChallengeResponse{
 		Response: fetch.AuthChallengeResponseResponseProvideCredentials,
-		Username: "Crawlergo",
-		Password: "Crawlergo",
+		Username: "Rad",
+		Password: "Rad",
 	}
 	// 取消认证
 	_ = fetch.ContinueWithAuth(req.RequestID, &authRes).Do(ctx)
 }
 
-/**
+/*
+*
 处理导航请求
 */
 func (tab *Tab) HandleNavigationReq(req *model2.Request, v *fetch.EventRequestPaused) {
@@ -109,7 +113,7 @@ func (tab *Tab) HandleNavigationReq(req *model2.Request, v *fetch.EventRequestPa
 	if tab.FoundRedirection && tab.IsTopFrame(v.FrameID.String()) {
 		logger.Logger.Debug("redirect navigation req: " + req.URL.String())
 		//_ = fetch.FailRequest(v.RequestID, network.ErrorReasonConnectionAborted).Do(ctx)
-		body := base64.StdEncoding.EncodeToString([]byte(`<html><body>Crawlergo</body></html>`))
+		body := base64.StdEncoding.EncodeToString([]byte(`<html><body>Rad</body></html>`))
 		param := fetch.FulfillRequest(v.RequestID, 200).WithBody(body)
 		err := param.Do(ctx)
 		if err != nil {
@@ -156,7 +160,8 @@ func (tab *Tab) HandleNavigationReq(req *model2.Request, v *fetch.EventRequestPa
 	}
 }
 
-/**
+/*
+*
 处理Host绑定
 */
 func (tab *Tab) HandleHostBinding(req *model2.Request) {
@@ -189,7 +194,8 @@ func (tab *Tab) IsTopFrame(FrameID string) bool {
 	return FrameID == tab.TopFrameId
 }
 
-/**
+/*
+*
 解析响应内容中的URL 使用正则匹配
 */
 func (tab *Tab) ParseResponseURL(v *network.EventResponseReceived) {

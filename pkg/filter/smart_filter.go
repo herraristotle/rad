@@ -7,10 +7,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Qianlitp/crawlergo/pkg/config"
-	"github.com/Qianlitp/crawlergo/pkg/logger"
-	"github.com/Qianlitp/crawlergo/pkg/model"
-	"github.com/Qianlitp/crawlergo/pkg/tools"
+	"github.com/herraristotle/rad/pkg/config"
+	"github.com/herraristotle/rad/pkg/logger"
+	"github.com/herraristotle/rad/pkg/model"
+	"github.com/herraristotle/rad/pkg/tools"
 
 	mapset "github.com/deckarep/golang-set"
 )
@@ -18,26 +18,26 @@ import (
 type SmartFilter struct {
 	StrictMode bool
 	*SimpleFilter
-	filterLocationSet          mapset.Set // 非逻辑型参数的位置记录 全局统一标记过滤
+	filterLocationSet          mapset.Set // locations of non-logic params; globally marked for filtering
 	filterParamKeyRepeatCount  sync.Map
-	filterParamKeySingleValues sync.Map // 所有参数名重复数量统计
-	filterPathParamKeySymbol   sync.Map // 某个path下的某个参数的值出现标记次数统计
+	filterParamKeySingleValues sync.Map // count of duplicate occurrences per param name
+	filterPathParamKeySymbol   sync.Map // mark count per param value under a given path
 	filterParamKeyAllValues    sync.Map
 	filterPathParamEmptyValues sync.Map
 	filterParentPathValues     sync.Map
-	uniqueMarkedIds            mapset.Set // 标记后的唯一ID，用于去重
+	uniqueMarkedIds            mapset.Set // unique IDs after marking, used for dedup
 }
 
 const (
-	MaxParentPathCount         = 32 // 相对于上一级目录，本级path目录的数量修正最大值
-	MaxParamKeySingleCount     = 8  // 某个URL参数名重复修正最大值
-	MaxParamKeyAllCount        = 10 // 本轮所有URL中某个参数名的重复修正最大值
-	MaxPathParamEmptyCount     = 10 // 某个path下的参数值为空，参数名个数修正最大值
-	MaxPathParamKeySymbolCount = 5  // 某个Path下的某个参数的标记数量超过此值，则该参数被全局标记
+	MaxParentPathCount         = 32 // max correction count for this path level relative to its parent
+	MaxParamKeySingleCount     = 8  // max correction for duplicate param names in one URL
+	MaxParamKeyAllCount        = 10 // max correction for one param name across all URLs in this round
+	MaxPathParamEmptyCount     = 10 // max correction for empty-valued param names under one path
+	MaxPathParamKeySymbolCount = 5  // if markings for one param under one path exceed this, mark it globally
 )
 
 const (
-	CustomValueMark    = "{{Crawlergo}}"
+	CustomValueMark    = "{{Rad}}"
 	FixParamRepeatMark = "{{fix_param}}"
 	FixPathMark        = "{{fix_path}}"
 	TooLongMark        = "{{long}}"
@@ -91,13 +91,13 @@ func NewSmartFilter(base *SimpleFilter, strictMode bool) *SmartFilter {
 
 /*
 *
-智能去重
-可选严格模式
+Smart deduplication.
+Optional strict mode.
 
-需要过滤则返回 true
+Returns true when the request should be filtered out.
 */
 func (s *SmartFilter) DoFilter(req *model.Request) bool {
-	// 首先过滤掉静态资源、基础的去重、过滤其它的域名
+	// First filter static resources, apply basic dedup, and drop other domains
 	if s.SimpleFilter.DoFilter(req) {
 		logger.Logger.Debugf("filter req by simplefilter: " + req.URL.RequestURI())
 		return true
@@ -105,7 +105,7 @@ func (s *SmartFilter) DoFilter(req *model.Request) bool {
 
 	req.Filter.FragmentID = s.calcFragmentID(req.URL.Fragment)
 
-	// 标记
+	// Apply markings
 	if req.Method == config.GET || req.Method == config.DELETE || req.Method == config.HEAD || req.Method == config.OPTIONS {
 		s.getMark(req)
 		s.repeatCountStatistic(req)
@@ -115,48 +115,48 @@ func (s *SmartFilter) DoFilter(req *model.Request) bool {
 		logger.Logger.Debug("dont support such method: " + req.Method)
 	}
 
-	// 对标记后的请求进行去重
+	// Deduplicate the marked requests
 	uniqueId := req.Filter.UniqueId
 	if s.uniqueMarkedIds.Contains(uniqueId) {
 		logger.Logger.Debugf("filter req by uniqueMarkedIds 1: " + req.URL.RequestURI())
 		return true
 	}
 
-	// 全局数值型参数标记
+	// Apply global marking for numeric params
 	s.globalFilterLocationMark(req)
 
-	// 接下来对标记的GET请求进行去重
+	// Next, deduplicate the marked GET requests
 	if req.Method == config.GET || req.Method == config.DELETE || req.Method == config.HEAD || req.Method == config.OPTIONS {
-		// 对超过阈值的GET请求进行标记
+		// Mark GET requests that exceed the thresholds
 		s.overCountMark(req)
 
-		// 重新计算 QueryMapId
+		// Recompute QueryMapId
 		req.Filter.QueryMapId = getParamMapID(req.Filter.MarkedQueryMap)
-		// 重新计算 PathId
+		// Recompute PathId
 		req.Filter.PathId = getPathID(req.Filter.MarkedPath)
 	} else {
-		// 重新计算 PostDataId
+		// Recompute PostDataId
 		req.Filter.PostDataId = getParamMapID(req.Filter.MarkedPostDataMap)
 	}
 
-	// 重新计算请求唯一ID
+	// Recompute the request unique ID
 	req.Filter.UniqueId = getMarkedUniqueID(req)
 
-	// 新的ID再次去重
+	// Deduplicate again on the new IDs
 	newUniqueId := req.Filter.UniqueId
 	if s.uniqueMarkedIds.Contains(newUniqueId) {
 		logger.Logger.Debugf("filter req by uniqueMarkedIds 2: " + req.URL.RequestURI())
 		return true
 	}
 
-	// 添加到结果集中
+	// Add to the result set
 	s.uniqueMarkedIds.Add(newUniqueId)
 	return false
 }
 
 /*
 *
-Query的Map对象会自动解码，所以对RawQuery进行预先的标记
+The Query map decodes values automatically, so mark RawQuery beforehand
 */
 func (s *SmartFilter) preQueryMark(rawQuery string) string {
 	if chineseRegex.MatchString(rawQuery) {
@@ -171,20 +171,20 @@ func (s *SmartFilter) preQueryMark(rawQuery string) string {
 
 /*
 *
-对GET请求的参数和路径进行标记
+Mark params and path of a GET request
 */
 func (s *SmartFilter) getMark(req *model.Request) {
-	// 首先是解码前的预先替换
+	// First, the pre-decode substitution
 	todoURL := *(req.URL)
 	todoURL.RawQuery = s.preQueryMark(todoURL.RawQuery)
 
-	// 依次打标记
+	// Apply the markings in order
 	queryMap := todoURL.QueryMap()
 	queryMap = markParamName(queryMap)
 	queryMap = s.markParamValue(queryMap, *req)
 	markedPath := MarkPath(todoURL.Path)
 
-	// 计算唯一的ID
+	// Compute the unique ID
 	var queryKeyID string
 	var queryMapID string
 	if len(queryMap) != 0 {
@@ -202,13 +202,13 @@ func (s *SmartFilter) getMark(req *model.Request) {
 	req.Filter.MarkedPath = markedPath
 	req.Filter.PathId = pathID
 
-	// 最后计算标记后的唯一请求ID
+	// Finally compute the unique request ID after marking
 	req.Filter.UniqueId = getMarkedUniqueID(req)
 }
 
 /*
 *
-对POST请求的参数和路径进行标记
+Mark params and path of a POST request
 */
 func (s *SmartFilter) postMark(req *model.Request) {
 	postDataMap := req.PostDataMap()
@@ -217,7 +217,7 @@ func (s *SmartFilter) postMark(req *model.Request) {
 	postDataMap = s.markParamValue(postDataMap, *req)
 	markedPath := MarkPath(req.URL.Path)
 
-	// 计算唯一的ID
+	// Compute the unique ID
 	var postDataMapID string
 	if len(postDataMap) != 0 {
 		postDataMapID = getParamMapID(postDataMap)
@@ -231,24 +231,24 @@ func (s *SmartFilter) postMark(req *model.Request) {
 	req.Filter.MarkedPath = markedPath
 	req.Filter.PathId = pathID
 
-	// 最后计算标记后的唯一请求ID
+	// Finally compute the unique request ID after marking
 	req.Filter.UniqueId = getMarkedUniqueID(req)
 }
 
 /*
 *
-标记参数名
+Mark parameter names
 */
 func markParamName(paramMap map[string]interface{}) map[string]interface{} {
 	markedParamMap := map[string]interface{}{}
 	for key, value := range paramMap {
-		// 纯字母不处理
+		// Leave pure alphabetic names alone
 		if onlyAlphaRegex.MatchString(key) {
 			markedParamMap[key] = value
-			// 参数名过长
+			// Param name is too long
 		} else if len(key) >= 32 {
 			markedParamMap[TooLongMark] = value
-			// 替换掉数字
+			// Strip the digits
 		} else {
 			key = replaceNumRegex.ReplaceAllString(key, NumberMark)
 			markedParamMap[key] = value
@@ -259,7 +259,7 @@ func markParamName(paramMap map[string]interface{}) map[string]interface{} {
 
 /*
 *
-标记参数值
+Mark parameter values
 */
 func (s *SmartFilter) markParamValue(paramMap map[string]interface{}, req model.Request) map[string]interface{} {
 	markedParamMap := map[string]interface{}{}
@@ -275,26 +275,26 @@ func (s *SmartFilter) markParamValue(paramMap map[string]interface{}, req model.
 			markedParamMap[key] = NumberMark
 			continue
 		}
-		// 只处理string类型
+		// Only handle strings
 		valueStr, ok := value.(string)
 		if !ok {
 			continue
 		}
-		// Crawlergo 为特定字符，说明此参数位置为数值型，非逻辑型，记录下此参数，全局过滤
-		if strings.Contains(valueStr, "Crawlergo") {
+		// Values rad injected itself mark this param as numeric rather than logic; record it for global filtering
+		if config.IsFormFillSentinel(valueStr) {
 			name := req.URL.Hostname() + req.URL.Path + req.Method + key
 			s.filterLocationSet.Add(name)
 			markedParamMap[key] = CustomValueMark
-			// 全大写字母
+			// all uppercase letters
 		} else if onlyAlphaUpperRegex.MatchString(valueStr) {
 			markedParamMap[key] = UpperMark
-			// 参数值长度大于等于16
+			// value is 16 characters or longer
 		} else if len(valueStr) >= 16 {
 			markedParamMap[key] = TooLongMark
-			// 均为数字和一些符号组成
+			// consists only of digits and a few symbols
 		} else if onlyNumberRegex.MatchString(valueStr) || onlyNumberRegex.MatchString(numSymbolRegex.ReplaceAllString(valueStr, "")) {
 			markedParamMap[key] = NumberMark
-			// 存在中文
+			// contains Chinese characters
 		} else if chineseRegex.MatchString(valueStr) {
 			markedParamMap[key] = ChineseMark
 			// urlencode
@@ -303,24 +303,24 @@ func (s *SmartFilter) markParamValue(paramMap map[string]interface{}, req model.
 			// unicode
 		} else if unicodeRegex.MatchString(valueStr) {
 			markedParamMap[key] = UnicodeMark
-			// 时间
+			// looks like a timestamp
 		} else if onlyNumberRegex.MatchString(timeSymbolRegex.ReplaceAllString(valueStr, "")) {
 			markedParamMap[key] = TimeMark
-			// 字母加数字
+			// letters plus digits
 		} else if onlyAlphaNumRegex.MatchString(valueStr) && numberRegex.MatchString(valueStr) {
 			markedParamMap[key] = MixAlphaNumMark
-			// 含有一些特殊符号
+			// contains some special symbols
 		} else if hasSpecialSymbol(valueStr) {
 			markedParamMap[key] = MixSymbolMark
-			// 数字出现的次数超过3，视为数值型参数
+			// more than 3 digits => treat as a numeric param
 		} else if b := OneNumberRegex.ReplaceAllString(valueStr, "0"); strings.Count(b, "0") >= 3 {
 			markedParamMap[key] = MixNumMark
-			// 严格模式
+			// strict mode
 		} else if s.StrictMode {
-			// 无小写字母
+			// no lowercase letters
 			if !alphaLowerRegex.MatchString(valueStr) {
 				markedParamMap[key] = NoLowerAlphaMark
-				// 常见的值一般为 大写字母、小写字母、数字、下划线的任意组合，组合类型超过三种则视为伪静态
+				// typical values mix uppercase, lowercase, digits and underscores; more than three of these classes means pseudo-static
 			} else {
 				count := 0
 				if alphaLowerRegex.MatchString(valueStr) {
@@ -348,7 +348,7 @@ func (s *SmartFilter) markParamValue(paramMap map[string]interface{}, req model.
 
 /*
 *
-标记路径
+Mark the path
 */
 func MarkPath(path string) string {
 	pathParts := strings.Split(path, "/")
@@ -359,14 +359,14 @@ func MarkPath(path string) string {
 			pathParts[index] = NumberMark
 		} else if strings.HasSuffix(part, ".html") || strings.HasSuffix(part, ".htm") || strings.HasSuffix(part, ".shtml") {
 			part = htmlReplaceRegex.ReplaceAllString(part, "")
-			// 大写、小写、数字混合
+			// mixed uppercase, lowercase and digits
 			if numberRegex.MatchString(part) && alphaUpperRegex.MatchString(part) && alphaLowerRegex.MatchString(part) {
 				pathParts[index] = MixAlphaNumMark
-				// 纯数字
+				// pure digits
 			} else if b := numSymbolRegex.ReplaceAllString(part, ""); onlyNumberRegex.MatchString(b) {
 				pathParts[index] = NumberMark
 			}
-			// 含有特殊符号
+			// contains special symbols
 		} else if hasSpecialSymbol(part) {
 			pathParts[index] = MixSymbolMark
 		} else if chineseRegex.MatchString(part) {
@@ -375,10 +375,10 @@ func MarkPath(path string) string {
 			pathParts[index] = UnicodeMark
 		} else if onlyAlphaUpperRegex.MatchString(part) {
 			pathParts[index] = UpperMark
-			// 均为数字和一些符号组成
+			// consists only of digits and a few symbols
 		} else if b := numSymbolRegex.ReplaceAllString(part, ""); onlyNumberRegex.MatchString(b) {
 			pathParts[index] = NumberMark
-			// 数字出现的次数超过3，视为伪静态path
+			// more than 3 digits => treat the path as pseudo-static
 		} else if b := OneNumberRegex.ReplaceAllString(part, "0"); strings.Count(b, "0") > 3 {
 			pathParts[index] = MixNumMark
 		}
@@ -389,7 +389,7 @@ func MarkPath(path string) string {
 
 /*
 *
-全局数值型参数过滤
+Global numeric-param filtering
 */
 func (s *SmartFilter) globalFilterLocationMark(req *model.Request) {
 	name := req.URL.Hostname() + req.URL.Path + req.Method
@@ -412,14 +412,14 @@ func (s *SmartFilter) globalFilterLocationMark(req *model.Request) {
 
 /*
 *
-进行全局重复参数名、参数值、路径的统计标记
-之后对超过阈值的部分再次打标记
+Count duplicates globally across param names, param values and paths,
+then mark the parts that exceed the thresholds
 */
 func (s *SmartFilter) repeatCountStatistic(req *model.Request) {
 	queryKeyId := req.Filter.QueryKeysId
 	pathId := req.Filter.PathId
 	if queryKeyId != "" {
-		// 所有参数名重复数量统计
+		// count of duplicate occurrences per param name
 		if v, ok := s.filterParamKeyRepeatCount.Load(queryKeyId); ok {
 			s.filterParamKeyRepeatCount.Store(queryKeyId, v.(int)+1)
 		} else {
@@ -427,7 +427,7 @@ func (s *SmartFilter) repeatCountStatistic(req *model.Request) {
 		}
 
 		for key, value := range req.Filter.MarkedQueryMap {
-			// 某个URL的所有参数名重复数量统计
+			// duplicate param names within one URL
 			paramQueryKey := queryKeyId + key
 
 			if set, ok := s.filterParamKeySingleValues.Load(paramQueryKey); ok {
@@ -437,7 +437,7 @@ func (s *SmartFilter) repeatCountStatistic(req *model.Request) {
 				s.filterParamKeySingleValues.Store(paramQueryKey, mapset.NewSet(value))
 			}
 
-			//本轮所有URL中某个参数重复数量统计
+			//count duplicates of one param across all URLs in this round
 			if _, ok := s.filterParamKeyAllValues.Load(key); !ok {
 				s.filterParamKeyAllValues.Store(key, mapset.NewSet(value))
 			} else {
@@ -449,7 +449,7 @@ func (s *SmartFilter) repeatCountStatistic(req *model.Request) {
 				}
 			}
 
-			// 如果参数值为空，统计该PATH下的空值参数名个数
+			// if the value is empty, count empty-valued param names under this path
 			if value == "" {
 				if _, ok := s.filterPathParamEmptyValues.Load(pathId); !ok {
 					s.filterPathParamEmptyValues.Store(pathId, mapset.NewSet(key))
@@ -464,7 +464,7 @@ func (s *SmartFilter) repeatCountStatistic(req *model.Request) {
 			}
 
 			pathIdKey := pathId + key
-			// 某path下的参数值去重标记出现次数统计
+			// count dedup markings per param value under one path
 			if v, ok := s.filterPathParamKeySymbol.Load(pathIdKey); ok {
 				if markedStringRegex.MatchString(value.(string)) {
 					s.filterPathParamKeySymbol.Store(pathIdKey, v.(int)+1)
@@ -476,7 +476,7 @@ func (s *SmartFilter) repeatCountStatistic(req *model.Request) {
 		}
 	}
 
-	// 相对于上一级目录，本级path目录的数量统计，存在文件后缀的情况下，放行常见脚本后缀
+	// Count this path level relative to its parent; when a file extension is present, let common script suffixes through
 	if req.URL.ParentPath() == "" || inCommonScriptSuffix(req.URL.FileExt()) {
 		return
 	}
@@ -498,14 +498,14 @@ func (s *SmartFilter) repeatCountStatistic(req *model.Request) {
 
 /*
 *
-对重复统计之后，超过阈值的部分再次打标记
+After the duplicate counting, mark again whatever exceeds the thresholds
 */
 func (s *SmartFilter) overCountMark(req *model.Request) {
 	queryKeyId := req.Filter.QueryKeysId
 	pathId := req.Filter.PathId
-	// 参数不为空，
+	// when the param value is not empty,
 	if req.Filter.QueryKeysId != "" {
-		// 某个URL的所有参数名重复数量超过阈值 且该参数有超过三个不同的值 则打标记
+		// if duplicate param names in one URL exceed the threshold and the param has more than three distinct values, mark it
 		if v, ok := s.filterParamKeyRepeatCount.Load(queryKeyId); ok && v.(int) > MaxParamKeySingleCount {
 			for key := range req.Filter.MarkedQueryMap {
 				paramQueryKey := queryKeyId + key
@@ -519,7 +519,7 @@ func (s *SmartFilter) overCountMark(req *model.Request) {
 		}
 
 		for key := range req.Filter.MarkedQueryMap {
-			// 所有URL中，某个参数不同的值出现次数超过阈值，打标记去重
+			// across all URLs, if one param has more than the threshold of distinct values, mark it for dedup
 			if paramKeySet, ok := s.filterParamKeyAllValues.Load(key); ok {
 				paramKeySet := paramKeySet.(mapset.Set)
 				if paramKeySet.Cardinality() > MaxParamKeyAllCount {
@@ -528,13 +528,13 @@ func (s *SmartFilter) overCountMark(req *model.Request) {
 			}
 
 			pathIdKey := pathId + key
-			// 某个PATH的GET参数值去重标记出现次数超过阈值，则对该PATH的该参数进行全局标记
+			// if dedup markings for a GET param value under one PATH exceed the threshold, mark that param globally for the PATH
 			if v, ok := s.filterPathParamKeySymbol.Load(pathIdKey); ok && v.(int) > MaxPathParamKeySymbolCount {
 				req.Filter.MarkedQueryMap[key] = FixParamRepeatMark
 			}
 		}
 
-		// 处理某个path下空参数值的参数个数超过阈值 如伪静态： http://bang.360.cn/?chu_xiu
+		// Handle paths whose empty-valued param count exceeds the threshold, e.g. pseudo-static: http://bang.360.cn/?chu_xiu
 		if v, ok := s.filterPathParamEmptyValues.Load(pathId); ok {
 			set := v.(mapset.Set)
 			if set.Cardinality() > MaxPathParamEmptyCount {
@@ -551,7 +551,7 @@ func (s *SmartFilter) overCountMark(req *model.Request) {
 		}
 	}
 
-	// 处理本级path的伪静态
+	// Handle pseudo-static at this path level
 	if req.URL.ParentPath() == "" || inCommonScriptSuffix(req.URL.FileExt()) {
 		return
 	}
@@ -568,7 +568,7 @@ func (s *SmartFilter) overCountMark(req *model.Request) {
 	}
 }
 
-// calcFragmentID 计算 fragment 唯一值，如果 fragment 的格式为 url path
+// calcFragmentID Compute a unique fragment value when the fragment is formatted as a URL path
 func (s *SmartFilter) calcFragmentID(fragment string) string {
 	if fragment == "" || !strings.HasPrefix(fragment, "/") {
 		return ""
@@ -587,7 +587,7 @@ func (s *SmartFilter) calcFragmentID(fragment string) string {
 
 /*
 *
-计算标记后的唯一请求ID
+Compute the unique request ID after marking
 */
 func getMarkedUniqueID(req *model.Request) string {
 	var paramId string
@@ -610,7 +610,7 @@ func getMarkedUniqueID(req *model.Request) string {
 
 /*
 *
-计算请求参数的key标记后的唯一ID
+Compute the unique ID after marking request param keys
 */
 func getKeysID(dataMap map[string]interface{}) string {
 	var keys []string
@@ -627,7 +627,7 @@ func getKeysID(dataMap map[string]interface{}) string {
 
 /*
 *
-计算请求参数标记后的唯一ID
+Compute the unique ID after marking request params
 */
 func getParamMapID(dataMap map[string]interface{}) string {
 	var keys []string
@@ -649,7 +649,7 @@ func getParamMapID(dataMap map[string]interface{}) string {
 
 /*
 *
-计算PATH标记后的唯一ID
+Compute the unique ID after marking the PATH
 */
 func getPathID(path string) string {
 	return tools.StrMd5(path)
@@ -657,7 +657,7 @@ func getPathID(path string) string {
 
 /*
 *
-判断字符串中是否存在以下特殊符号
+Report whether the string contains any of these special symbols
 */
 func hasSpecialSymbol(str string) bool {
 	symbolList := []string{"{", "}", " ", "|", "#", "@", "$", "*", ",", "<", ">", "/", "?", "\\", "+", "="}

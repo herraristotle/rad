@@ -14,7 +14,7 @@ FROM ubuntu:18.04
 
 WORKDIR /
 
-COPY --from=build /app/bin/crawlergo /crawlergo
+COPY --from=build /app/bin/rad /rad
 COPY --from=build /app/latest/ /chrome/
 RUN apt-get update && apt-get install -yq --no-install-recommends \
      libasound2 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 \
@@ -23,4 +23,4 @@ RUN apt-get update && apt-get install -yq --no-install-recommends \
      libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 libnss3 \
      && rm -rf /var/lib/apt/lists/*
 
-ENTRYPOINT ["/crawlergo", "-c", "/chrome/chrome"]
+ENTRYPOINT ["/rad", "-c", "/chrome/chrome"]

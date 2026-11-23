@@ -1,6 +1,6 @@
 package filter
 
-import "github.com/Qianlitp/crawlergo/pkg/model"
+import "github.com/herraristotle/rad/pkg/model"
 
 type FilterHandler interface {
 	DoFilter(req *model.Request) bool

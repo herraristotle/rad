@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/Qianlitp/crawlergo/pkg/config"
+	"github.com/herraristotle/rad/pkg/config"
 	"github.com/urfave/cli/v2"
 )
 
@@ -44,7 +44,7 @@ func SetChromePath() *cli.PathFlag {
 		Aliases:     []string{"c"},
 		Usage:       "`Path` of chromium executable. Such as \"/home/test/chrome-linux/chrome\"",
 		Destination: &taskConfig.ChromiumPath,
-		EnvVars:     []string{"CRAWLERGO_CHROMIUM_PATH"},
+		EnvVars:     []string{"RAD_CHROMIUM_PATH", "CRAWLERGO_CHROMIUM_PATH"},
 	}
 }
 
@@ -54,7 +54,7 @@ func SetChromeWSUrl() *cli.StringFlag {
 		Aliases:     []string{"w"},
 		Usage:       "`URL` of chromium websockets debugger. Please note that any chromium flags specified will not apply when using this option. Such as \"ws://127.0.0.1:9222/devtools/browser/94b947d7-2a08-4cee-8e21-d77055e8c465\"",
 		Destination: &taskConfig.ChromiumWSUrl,
-		EnvVars:     []string{"CRAWLERGO_CHROME_WS_URL"},
+		EnvVars:     []string{"RAD_CHROME_WS_URL", "CRAWLERGO_CHROME_WS_URL"},
 	}
 }
 
@@ -62,7 +62,7 @@ func SetCustomHeaders() *cli.StringFlag {
 	return &cli.StringFlag{
 		Name:        "custom-headers",
 		Usage:       "add additional `Headers` to each request. The input string will be called json.Unmarshal",
-		Value:       fmt.Sprintf(`{"Spider-Name": "crawlergo", "User-Agent": "%s"}`, config.DefaultUA),
+		Value:       fmt.Sprintf(`{"Spider-Name": "rad", "User-Agent": "%s"}`, config.DefaultUA),
 		Destination: &taskConfig.ExtraHeadersString,
 	}
 }
@@ -224,7 +224,7 @@ func SetIgnoreUrlKeywords() *cli.StringSliceFlag {
 		Name:        "ignore-url-keywords",
 		Aliases:     []string{"iuk"},
 		Value:       cli.NewStringSlice(config.DefaultIgnoreKeywords...),
-		Usage:       "crawlergo will not crawl these URLs matched by `Keywords`. e.g.: -iuk logout -iuk quit -iuk exit",
+		Usage:       "rad will not crawl these URLs matched by `Keywords`. e.g.: -iuk logout -iuk quit -iuk exit",
 		DefaultText: "Default [logout quit exit]",
 		Destination: ignoreKeywords,
 	}
@@ -234,7 +234,7 @@ func SetFormValues() *cli.StringSliceFlag {
 	return &cli.StringSliceFlag{
 		Name:        "form-values",
 		Aliases:     []string{"fv"},
-		Usage:       "custom filling text for each form type. e.g.: -fv username=crawlergo_nice -fv password=admin123",
+		Usage:       "custom filling text for each form type. e.g.: -fv username=rad_nice -fv password=admin123",
 		Destination: customFormTypeValues,
 	}
 }
@@ -244,7 +244,7 @@ func SetFormKeywordValue() *cli.StringSliceFlag {
 	return &cli.StringSliceFlag{
 		Name:        "form-keyword-values",
 		Aliases:     []string{"fkv"},
-		Usage:       "custom filling text, fuzzy matched by keyword. e.g.: -fkv user=crawlergo_nice -fkv pass=admin123",
+		Usage:       "custom filling text, fuzzy matched by keyword. e.g.: -fkv user=rad_nice -fkv pass=admin123",
 		Destination: customFormKeywordValues,
 	}
 }

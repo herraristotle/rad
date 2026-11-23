@@ -24,7 +24,7 @@ def main():
         "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                       "Chrome/74.0.3945.0 Safari/537.36",
     }
-    cmd = ["./crawlergo_cmd", "-c", "/tmp/chrome-linux-628235/chrome",
+    cmd = ["./rad", "-c", "/tmp/chrome-linux-628235/chrome",
            "-o", "json", "--custom-headers", simplejson.dumps(headers), target]
     rsp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = rsp.communicate()

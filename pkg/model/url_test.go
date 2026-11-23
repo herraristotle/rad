@@ -63,12 +63,12 @@ func TestFileExt(t *testing.T) {
 
 func TestGetUrl(t *testing.T) {
 	testPath := "/user/info"
-	testQueyPath := "/user/info?keyword=crawlergocrawlergo&end=1"
+	testQueyPath := "/user/info?keyword=radrad&end=1"
 	url, err := GetUrl(testPath)
 	assert.Nil(t, err)
 	assert.NotNil(t, url)
 	queryUrl, err := GetUrl(testQueyPath)
 	assert.Nil(t, err)
 	assert.Equal(t, queryUrl.Path, testPath)
-	assert.Equal(t, queryUrl.RawQuery, "keyword=crawlergocrawlergo&end=1")
+	assert.Equal(t, queryUrl.RawQuery, "keyword=radrad&end=1")
 }

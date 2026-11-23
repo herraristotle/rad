@@ -3,7 +3,7 @@ package config_test
 import (
 	"testing"
 
-	"github.com/Qianlitp/crawlergo/pkg/config"
+	"github.com/herraristotle/rad/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
 

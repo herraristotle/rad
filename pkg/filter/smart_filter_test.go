@@ -3,33 +3,33 @@ package filter
 import (
 	"testing"
 
-	"github.com/Qianlitp/crawlergo/pkg/config"
-	"github.com/Qianlitp/crawlergo/pkg/model"
+	"github.com/herraristotle/rad/pkg/config"
+	"github.com/herraristotle/rad/pkg/model"
 
 	"github.com/stretchr/testify/assert"
 )
 
 var (
 	// queryUrls = []string{
-	// 	"http://test.nil.local.com/cctv/abcd?keyword=crawlergocrawlergo&end=1",
-	// 	"http://test.nil.local.com/cctv/abcd?keyword=crawlergocrawlergo&end=1",
+	// 	"http://test.nil.local.com/cctv/abcd?keyword=radrad&end=1",
+	// 	"http://test.nil.local.com/cctv/abcd?keyword=radrad&end=1",
 	// }
 
 	fragmentUrls = []string{
 		// 基准组
 		"http://testhtml5.vuwm.com/latest#/page/1",
-		"http://testhtml5.vuwm.com/latest#/page/search?keyword=Crawlergo&source=2&demo=1423&c=afa",
+		"http://testhtml5.vuwm.com/latest#/page/search?keyword=Rad&source=2&demo=1423&c=afa",
 		// 被标记成 {{long}}
 		"http://testhtml5.vuwm.com/latest#/page/search/fasdfsdafsdfsdfsdfasfsfasfafdsafssfasdfsd",
 
 		// 对照组
 		"http://testhtml5.vuwm.com/latest#/page/2",
-		// 不应该被标记成 {{long}}
-		"http://testhtml5.vuwm.com/latest#/page/search?keyword=CrawlergoCrawlergoCrawlergo&source=1&demo=1255&c=afa",
+		// 同类型：只有数值型参数不同，不应被标记成 {{long}}
+		"http://testhtml5.vuwm.com/latest#/page/search?keyword=Rad&source=1&demo=1255&c=afa",
 	}
 
 	// completeUrls = []string{
-	// 	"https://test.local.com:1234/adfatd/123456/sx14xi?user=crawlergo&pwd=fa1424&end=1#/user/info",
+	// 	"https://test.local.com:1234/adfatd/123456/sx14xi?user=rad&pwd=fa1424&end=1#/user/info",
 	// }
 	smart = NewSmartFilter(NewSimpleFilter(""), true)
 )
@@ -51,5 +51,31 @@ func TestDoFilter_countFragment(t *testing.T) {
 	for _, rq := range reqs[3:] {
 		// 同类型出现第二次，应该被过滤
 		assert.Equal(t, smart.DoFilter(&rq), true)
+	}
+}
+
+func TestFormFillSentinelIsExact(t *testing.T) {
+	// Values that merely contain the brand name must not be mistaken for
+	// rad's own form-fill marker (regression: a substring match on "Rad"
+	// swallowed real values like "Radisson").
+	for _, value := range []string{"Radisson", "Brad", "Gradient", "trademark", "Radware"} {
+		f := NewSmartFilter(NewSimpleFilter(""), false)
+		url, err := model.GetUrl("http://sentinel.local/list?name=" + value)
+		assert.Nil(t, err)
+		req := model.GetRequest(config.GET, url)
+		f.DoFilter(&req)
+		assert.NotEqual(t, CustomValueMark, req.Filter.MarkedQueryMap["name"],
+			"value %q must not be marked as a form-fill sentinel", value)
+	}
+
+	// The values rad actually injects are still recognised.
+	for _, value := range []string{config.DefaultInputText, "Rad6."} {
+		f := NewSmartFilter(NewSimpleFilter(""), false)
+		url, err := model.GetUrl("http://sentinel.local/list?name=" + value)
+		assert.Nil(t, err)
+		req := model.GetRequest(config.GET, url)
+		f.DoFilter(&req)
+		assert.Equal(t, CustomValueMark, req.Filter.MarkedQueryMap["name"],
+			"value %q must be marked as a form-fill sentinel", value)
 	}
 }

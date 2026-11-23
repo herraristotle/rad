@@ -10,8 +10,8 @@ const (
 	DefaultUA               = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.0 Safari/537.36"
 	MaxTabsCount            = 10
 	TabRunTimeout           = 20 * time.Second
-	DefaultInputText        = "Crawlergo"
-	FormInputKeyword        = "Crawlergo"
+	DefaultInputText        = "Rad"
+	FormInputKeyword        = "Rad"
 	SuspectURLRegex         = `(?:"|')(((?:[a-zA-Z]{1,10}://|//)[^"'/]{1,}\.[a-zA-Z]{2,}[^"']{0,})|((?:/|\.\./|\./)[^"'><,;|*()(%%$^/\\\[\]][^"'><,;|()]{1,})|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{1,}\.(?:[a-zA-Z]{1,4}|action)(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{3,}(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-]{1,}\.(?:php|asp|aspx|jsp|json|action|html|js|txt|xml)(?:[\?|#][^"|']{0,}|)))(?:"|')`
 	URLRegex                = `((https?|ftp|file):)?//[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]`
 	AttrURLRegex            = ``
@@ -101,7 +101,7 @@ type ContinueResourceList []string
 var InputTextMap = map[string]map[string]interface{}{
 	"mail": {
 		"keyword": []string{"mail"},
-		"value":   "crawlergo@gmail.com",
+		"value":   "rad@example.com",
 	},
 	"code": {
 		"keyword": []string{"yanzhengma", "code", "ver", "captcha"},
@@ -113,11 +113,11 @@ var InputTextMap = map[string]map[string]interface{}{
 	},
 	"username": {
 		"keyword": []string{"name", "user", "id", "login", "account"},
-		"value":   "crawlergo@gmail.com",
+		"value":   "rad@example.com",
 	},
 	"password": {
 		"keyword": []string{"pass", "pwd"},
-		"value":   "Crawlergo6.",
+		"value":   "Rad6.",
 	},
 	"qq": {
 		"keyword": []string{"qq", "wechat", "tencent", "weixin"},
@@ -129,7 +129,7 @@ var InputTextMap = map[string]map[string]interface{}{
 	},
 	"url": {
 		"keyword": []string{"url", "site", "web", "blog", "link"},
-		"value":   "https://crawlergo.nice.cn/",
+		"value":   "https://example.com/",
 	},
 	"date": {
 		"keyword": []string{"date", "time", "year", "now"},
@@ -139,6 +139,27 @@ var InputTextMap = map[string]map[string]interface{}{
 		"keyword": []string{"day", "age", "num", "count"},
 		"value":   "10",
 	},
+}
+
+// FormFillSentinelValues are the brand-derived values rad injects when
+// auto-filling forms. The smart filter treats these exact values as its
+// "this param was filled by us" marker, so they must be compared by exact
+// equality: a substring match would also catch real values such as
+// "Radisson" or "Gradient".
+var FormFillSentinelValues = []string{
+	DefaultInputText,
+	InputTextMap["password"]["value"].(string),
+}
+
+// IsFormFillSentinel reports whether value is one of the values rad itself
+// writes into forms.
+func IsFormFillSentinel(value string) bool {
+	for _, sentinel := range FormFillSentinelValues {
+		if value == sentinel {
+			return true
+		}
+	}
+	return false
 }
 
 func init() {

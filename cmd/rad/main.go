@@ -12,12 +12,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Qianlitp/crawlergo/pkg"
-	"github.com/Qianlitp/crawlergo/pkg/config"
-	"github.com/Qianlitp/crawlergo/pkg/logger"
-	model2 "github.com/Qianlitp/crawlergo/pkg/model"
-	"github.com/Qianlitp/crawlergo/pkg/tools"
-	"github.com/Qianlitp/crawlergo/pkg/tools/requests"
+	"github.com/herraristotle/rad/pkg"
+	"github.com/herraristotle/rad/pkg/config"
+	"github.com/herraristotle/rad/pkg/logger"
+	model2 "github.com/herraristotle/rad/pkg/model"
+	"github.com/herraristotle/rad/pkg/tools"
+	"github.com/herraristotle/rad/pkg/tools/requests"
 	"github.com/panjf2000/ants/v2"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -81,9 +81,9 @@ func main() {
 	//customFormKeywordValues = cli.NewStringSlice()
 
 	app := &cli.App{
-		Name:      "crawlergo",
+		Name:      "rad",
 		Usage:     "A powerful browser crawler for web vulnerability scanners",
-		UsageText: "crawlergo [global options] url1 url2 url3 ... (must be same host)",
+		UsageText: "rad [global options] url1 url2 url3 ... (must be same host)",
 		Version:   Version,
 		Authors:   []*cli.Author{&author},
 		Flags:     cliFlags,

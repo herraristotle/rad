@@ -6,13 +6,14 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/Qianlitp/crawlergo/pkg/config"
-	"github.com/Qianlitp/crawlergo/pkg/logger"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/chromedp"
+	"github.com/herraristotle/rad/pkg/config"
+	"github.com/herraristotle/rad/pkg/logger"
 )
 
-/**
+/*
+*
 最后收集所有的链接
 */
 func (tab *Tab) collectLinks() {

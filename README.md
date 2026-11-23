@@ -1,4 +1,4 @@
-# crawlergo
+# rad
 
 ![chromedp](https://img.shields.io/badge/chromedp-v0.5.2-brightgreen.svg) [![BlackHat EU Arsenal](https://img.shields.io/badge/BlackHat%20Europe-2021%20Arsenal-blue.svg)](https://www.blackhat.com/eu-21/arsenal/schedule/index.html#crawlergo-a-powerful-browser-crawler-for-web-vulnerability-scanners-25113)
 
@@ -6,9 +6,11 @@
 
 English Document | [中文文档](./README_zh-cn.md)
 
-crawlergo is a browser crawler that uses `chrome headless` mode for URL collection. It hooks key positions of the whole web page with DOM rendering stage, automatically fills and submits forms, with intelligent JS event triggering, and collects as many entries exposed by the website as possible. The built-in URL de-duplication module filters out a large number of pseudo-static URLs, still maintains a fast parsing and crawling speed for large websites, and finally gets a high-quality collection of request results.
+> **rad** is a renamed fork of [crawlergo](https://github.com/Qianlitp/crawlergo), originally created by Qianlitp ([@9ian1i](https://github.com/Qianlitp)). Upstream attribution and the GPLv3 license are retained.
 
-crawlergo currently supports the following features:
+rad is a browser crawler that uses `chrome headless` mode for URL collection. It hooks key positions of the whole web page with DOM rendering stage, automatically fills and submits forms, with intelligent JS event triggering, and collects as many entries exposed by the website as possible. The built-in URL de-duplication module filters out a large number of pseudo-static URLs, still maintains a fast parsing and crawling speed for large websites, and finally gets a high-quality collection of request results.
+
+rad currently supports the following features:
 * chrome browser environment rendering
 * Intelligent form filling, automated submission
 * Full DOM event collection with automated triggering
@@ -39,9 +41,9 @@ make build
 make build_all
 ```
 
-1. crawlergo relies only on the chrome environment to run, go to [download](https://www.chromium.org/getting-involved/download-chromium) for the new version of chromium.
-2. Go to [download page](https://github.com/0Kee-Team/crawlergo/releases) for the latest version of crawlergo and extract it to any directory. If you are on linux or macOS, please give crawlergo **executable permissions (+x)**.
-3. Or you can modify the code and build it yourself.
+1. rad relies only on the chrome environment to run, go to [download](https://www.chromium.org/getting-involved/download-chromium) for the new version of chromium.
+2. Build rad with `make build`; the binary lands in `./bin/rad`. Copy it to any directory. If you are on linux or macOS, please give rad **executable permissions (+x)**.
+3. Prebuilt releases of upstream crawlergo exist on [its release page](https://github.com/0Kee-Team/crawlergo/releases), but they ship a binary named `crawlergo` — build from this repo to get `rad`.
 
 > If you are using a linux system and chrome prompts you with missing dependencies, please see TroubleShooting below
 
@@ -51,7 +53,7 @@ make build_all
 Assuming your chromium installation directory is `/tmp/chromium/`, set up 10 tabs open at the same time and crawl the `testphp.vulnweb.com`:
 
 ```shell
-bin/crawlergo -c /tmp/chromium/chrome -t 10 http://testphp.vulnweb.com/
+bin/rad -c /tmp/chromium/chrome -t 10 http://testphp.vulnweb.com/
 ```
 
 
@@ -60,22 +62,22 @@ bin/crawlergo -c /tmp/chromium/chrome -t 10 http://testphp.vulnweb.com/
 You can also use this with docker without headache: 
 
 ```shell
-git clone https://github.com/Qianlitp/crawlergo
-docker build . -t crawlergo
-docker run crawlergo http://testphp.vulnweb.com/
+# clone this repository, then:
+docker build . -t rad
+docker run rad http://testphp.vulnweb.com/
 ```
 
 
 ### Using Proxy
 
 ```shell
-bin/crawlergo -c /tmp/chromium/chrome -t 10 --request-proxy socks5://127.0.0.1:7891 http://testphp.vulnweb.com/
+bin/rad -c /tmp/chromium/chrome -t 10 --request-proxy socks5://127.0.0.1:7891 http://testphp.vulnweb.com/
 ```
 
 
-### Calling crawlergo with python
+### Calling rad with python
 
-By default, crawlergo prints the results directly on the screen. We next set the output mode to `json`, and the sample code for calling it using python is as follows:
+By default, rad prints the results directly on the screen. We next set the output mode to `json`, and the sample code for calling it using python is as follows:
 
 ```python
 #!/usr/bin/python3
@@ -87,7 +89,7 @@ import subprocess
 
 def main():
     target = "http://testphp.vulnweb.com/"
-    cmd = ["bin/crawlergo", "-c", "/tmp/chromium/chrome", "-o", "json", target]
+    cmd = ["bin/rad", "-c", "/tmp/chromium/chrome", "-o", "json", target]
     rsp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = rsp.communicate()
 	#  "--[Mission Complete]--"  is the end-of-task separator string
@@ -112,25 +114,25 @@ When the output mode is set to `json`, the returned result, after JSON deseriali
 
 ## Examples
 
-crawlergo returns the full request and URL, which can be used in a variety of ways:
+rad returns the full request and URL, which can be used in a variety of ways:
 
 * Used in conjunction with other passive web vulnerability scanners
 
   First, start a passive scanner and set the listening address to: `http://127.0.0.1:1234/`
 
-  Next, assuming crawlergo is on the same machine as the scanner, start crawlergo and set the parameters:
+  Next, assuming rad is on the same machine as the scanner, start rad and set the parameters:
 
   `--push-to-proxy http://127.0.0.1:1234/`
 
-* Host binding (not available for high version chrome)  [(example)](https://github.com/0Kee-Team/crawlergo/blob/master/examples/host_binding.py)
+* Host binding (not available for high version chrome)  [(example)](./examples/host_binding.py)
 
-* Custom Cookies  [(example)](https://github.com/0Kee-Team/crawlergo/blob/master/examples/request_with_cookie.py)
+* Custom Cookies  [(example)](./examples/request_with_cookie.py)
 
-* Regularly clean up zombie processes generated by crawlergo [(example)](https://github.com/0Kee-Team/crawlergo/blob/master/examples/zombie_clean.py) , contributed by @ring04h
+* Regularly clean up zombie processes generated by rad [(example)](./examples/zombie_clean.py) , contributed by @ring04h
 
 
 ## Bypass headless detect
-crawlergo can bypass headless mode detection by default.
+rad can bypass headless mode detection by default.
 
 https://intoli.com/blog/not-possible-to-block-chrome-headless/chrome-headless-test.html
 
@@ -180,7 +182,7 @@ https://intoli.com/blog/not-possible-to-block-chrome-headless/chrome-headless-te
 * `--filter-mode Mode, -f Mode`   Filtering mode, `simple`: only static resources and duplicate requests are filtered.  `smart`: with the ability to filter pseudo-static. `strict`: stricter pseudo-static filtering rules. (Default: smart)
 * `--output-mode value, -o value`   Result output mode, `console`: print the glorified results directly to the screen. `json`: print the json serialized string of all results.  `none`: don't print the output. (Default: console)
 * `--output-json filepath` Write the result to the specified file after JSON serializing it. (Default: null)
-* `--request-proxy proxyAddress` socks5 proxy address, all network requests from crawlergo and chrome browser are sent through the proxy. (Default: null)
+* `--request-proxy proxyAddress` socks5 proxy address, all network requests from rad and chrome browser are sent through the proxy. (Default: null)
 
 ### Expand input URL
 * `--fuzz-path`  Use the built-in dictionary for path fuzzing. (Default: false)
@@ -189,8 +191,8 @@ https://intoli.com/blog/not-possible-to-block-chrome-headless/chrome-headless-te
 
 ### Form auto-fill
 * `--ignore-url-keywords, -iuk` URL keyword that you don't want to visit, generally used to exclude logout links when customizing cookies. Usage: `-iuk logout -iuk exit`. (default: "logout", "quit", "exit")
-* `--form-values, -fv` Customize the value of the form fill, set by text type. Support definition types: default, mail, code, phone, username, password, qq, id_card, url, date and number. Text types are identified by the four attribute value keywords `id`, `name`, `class`, `type` of the input box label. For example, define the mailbox input box to be automatically filled with A and the password input box to be automatically filled with B, `-fv mail=A -fv password=B`.Where default represents the fill value when the text type is not recognized, as "Cralwergo". (Default: Cralwergo)
-* `--form-keyword-values, -fkv` Customize the value of the form fill, set by keyword fuzzy match. The keyword matches the four attribute values of `id`, `name`, `class`, `type` of the input box label. For example, fuzzy match the pass keyword to fill 123456 and the user keyword to fill admin, `-fkv user=admin -fkv pass=123456`. (Default: Cralwergo)
+* `--form-values, -fv` Customize the value of the form fill, set by text type. Support definition types: default, mail, code, phone, username, password, qq, id_card, url, date and number. Text types are identified by the four attribute value keywords `id`, `name`, `class`, `type` of the input box label. For example, define the mailbox input box to be automatically filled with A and the password input box to be automatically filled with B, `-fv mail=A -fv password=B`.Where default represents the fill value when the text type is not recognized, as "Rad". (Default: Rad)
+* `--form-keyword-values, -fkv` Customize the value of the form fill, set by keyword fuzzy match. The keyword matches the four attribute values of `id`, `name`, `class`, `type` of the input box label. For example, fuzzy match the pass keyword to fill 123456 and the user keyword to fill admin, `-fkv user=admin -fkv pass=123456`. (Default: Rad)
 
 ### Advanced settings for the crawling process
 * `--max-tab-count Number, -t Number`   The maximum number of tabs the crawler can open at the same time. (Default: 8)

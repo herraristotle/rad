@@ -36,7 +36,9 @@ def cmdprocess(cmdline):
 
 def main():
 
-    cmdline = "ps -ef | grep crawlergo | grep -v grep | awk '{print $2}'"
+    # Match only the rad binary itself, so unrelated processes whose command
+    # line merely contains "rad" are never considered for killing.
+    cmdline = "pgrep -x rad || true"
     output, stderr, return_code = cmdprocess(cmdline)
     
     if return_code != 0:

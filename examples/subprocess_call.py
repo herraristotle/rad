@@ -7,7 +7,7 @@ import subprocess
 
 def main():
     target = "http://testphp.vulnweb.com/"
-    cmd = ["./crawlergo_cmd", "-c", "/tmp/chrome-linux/chrome", "-o", "json", target]
+    cmd = ["./rad", "-c", "/tmp/chrome-linux/chrome", "-o", "json", target]
     rsp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = rsp.communicate()
 

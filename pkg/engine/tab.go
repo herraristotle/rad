@@ -10,10 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Qianlitp/crawlergo/pkg/config"
-	"github.com/Qianlitp/crawlergo/pkg/js"
-	"github.com/Qianlitp/crawlergo/pkg/logger"
-	model2 "github.com/Qianlitp/crawlergo/pkg/model"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/fetch"
@@ -22,6 +18,10 @@ import (
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	"github.com/gogf/gf/encoding/gcharset"
+	"github.com/herraristotle/rad/pkg/config"
+	"github.com/herraristotle/rad/pkg/js"
+	"github.com/herraristotle/rad/pkg/logger"
+	model2 "github.com/herraristotle/rad/pkg/model"
 )
 
 type Tab struct {
@@ -41,21 +41,21 @@ type Tab struct {
 
 	lock sync.Mutex
 
-	WG            sync.WaitGroup //当前Tab页的等待同步计数
+	WG            sync.WaitGroup //wait counter for this tab
 	collectLinkWG sync.WaitGroup
-	loadedWG      sync.WaitGroup //Loaded之后的等待计数
-	formSubmitWG  sync.WaitGroup //表单提交完毕的等待计数
-	removeLis     sync.WaitGroup //移除事件监听
-	domWG         sync.WaitGroup //DOMContentLoaded 的等待计数
-	fillFormWG    sync.WaitGroup //填充表单任务
+	loadedWG      sync.WaitGroup //wait counter for post-Loaded work
+	formSubmitWG  sync.WaitGroup //wait counter for form submission
+	removeLis     sync.WaitGroup //remove event listeners
+	domWG         sync.WaitGroup //wait counter for DOMContentLoaded
+	fillFormWG    sync.WaitGroup //form-filling task
 }
 
 type TabConfig struct {
 	TabRunTimeout           time.Duration
 	DomContentLoadedTimeout time.Duration
-	EventTriggerMode        string        // 事件触发的调用方式： 异步 或 顺序
-	EventTriggerInterval    time.Duration // 事件触发的间隔 单位毫秒
-	BeforeExitDelay         time.Duration // 退出前的等待时间，等待DOM渲染，等待XHR发出捕获
+	EventTriggerMode        string        // how events are triggered: async or sequential
+	EventTriggerInterval    time.Duration // interval between event triggers, in milliseconds
+	BeforeExitDelay         time.Duration // wait time before exit, to let DOM render and XHR requests fire
 	EncodeURLWithCharset    bool
 	IgnoreKeywords          []string //
 	Proxy                   string
@@ -84,24 +84,24 @@ func NewTab(browser *Browser, navigateReq model2.Request, config TabConfig) *Tab
 	tab.config = config
 	tab.DocBodyNodeId = 0
 
-	// 设置请求拦截监听
+	// Register the request interception listener
 	chromedp.ListenTarget(*tab.Ctx, func(v interface{}) {
 		switch v := v.(type) {
-		// 根据不同的事件 选择执行对应的动作
+		// Dispatch to the right action per event type
 		case *network.EventRequestWillBeSent:
 			if string(v.RequestID) == string(v.LoaderID) && v.Type == "Document" && tab.TopFrameId == "" {
 				tab.LoaderID = string(v.LoaderID)
 				tab.TopFrameId = string(v.FrameID)
 			}
 
-		// 请求发出时暂停 即 请求拦截
+		// pause as the request is sent, i.e. request interception
 		case *fetch.EventRequestPaused:
 			tab.WG.Add(1)
 			go tab.InterceptRequest(v)
 
-		// 解析所有JS文件中的URL并添加到结果中
-		// 解析HTML文档中的URL
-		// 查找当前页面的编码
+		// Parse URLs out of every JS file and add them to the results
+		// Parse URLs out of the HTML document
+		// Detect the current page's encoding
 		case *network.EventResponseReceived:
 			if v.Response.MimeType == "application/javascript" || v.Response.MimeType == "text/html" || v.Response.MimeType == "application/json" {
 				tab.WG.Add(1)
@@ -111,7 +111,7 @@ func NewTab(browser *Browser, navigateReq model2.Request, config TabConfig) *Tab
 				tab.WG.Add(1)
 				go tab.GetContentCharset(v)
 			}
-		// 处理后端重定向 3XX
+		// Handle server-side 3XX redirects
 		case *network.EventResponseReceivedExtraInfo:
 			if v.RequestID.String() == tab.NavNetworkID {
 				tab.WG.Add(1)
@@ -119,14 +119,14 @@ func NewTab(browser *Browser, navigateReq model2.Request, config TabConfig) *Tab
 			}
 		//case *network.EventLoadingFailed:
 		//	logger.Logger.Error("EventLoadingFailed ", v.ErrorText)
-		// 401 407 要求认证 此时会阻塞当前页面 需要处理解决
+		// 401 and 407 demand authentication and block the page, so they must be resolved
 		case *fetch.EventAuthRequired:
 			tab.WG.Add(1)
 			go tab.HandleAuthRequired(v)
 
 		// DOMContentLoaded
-		// 开始执行表单填充 和 执行DOM节点观察函数
-		// 只执行一次
+		// Start form filling and the DOM node observer
+		// run only once
 		case *page.EventDomContentEventFired:
 			if DOMContentLoadedRun {
 				return
@@ -165,15 +165,15 @@ func (tab *Tab) Start() {
 		RunWithTimeOut(tab.Ctx, tab.config.DomContentLoadedTimeout, chromedp.Tasks{
 			//
 			runtime.Enable(),
-			// 开启网络层API
+			// Enable the network layer API
 			network.Enable(),
-			// 开启请求拦截API
+			// Enable the request interception API
 			fetch.Enable().WithHandleAuthRequests(true),
-			// 添加回调函数绑定
-			// XSS-Scan 使用的回调
+			// Bind the callback
+			// callback used by XSS-Scan
 			runtime.AddBinding("addLink"),
 			runtime.AddBinding("Test"),
-			// 初始化执行JS
+			// Run the initialization JS
 			chromedp.ActionFunc(func(ctx context.Context) error {
 				var err error
 				_, err = page.AddScriptToEvaluateOnNewDocument(js.TabInitJS).Do(ctx)
@@ -183,7 +183,7 @@ func (tab *Tab) Start() {
 				return nil
 			}),
 			network.SetExtraHTTPHeaders(tab.ExtraHeaders),
-			// 执行导航
+			// Navigate
 			chromedp.Navigate(tab.NavigateReq.URL.String()),
 		}),
 	); err != nil {
@@ -208,14 +208,14 @@ func (tab *Tab) Start() {
 		logger.Logger.Warn("navigation tasks TIMEOUT.")
 	}
 
-	// 等待收集所有链接
+	// Wait for all links to be collected
 	logger.Logger.Debug("collectLinks start.")
 	tab.collectLinkWG.Add(3)
 	go tab.collectLinks()
 	tab.collectLinkWG.Wait()
 	logger.Logger.Debug("collectLinks end.")
 
-	// 识别页面编码 并编码所有URL
+	// Detect the page encoding and encode every URL
 	if tab.config.EncodeURLWithCharset {
 		tab.DetectCharset()
 		tab.EncodeAllURLWithCharset()
@@ -236,8 +236,9 @@ func RunWithTimeOut(ctx *context.Context, timeout time.Duration, tasks chromedp.
 	}
 }
 
-/**
-添加收集到的URL到结果列表，需要处理Host绑定
+/*
+*
+Add the collected URLs to the result list; Host binding must be handled here
 */
 func (tab *Tab) AddResultUrl(method string, _url string, source string) {
 	navUrl := tab.NavigateReq.URL
@@ -251,7 +252,7 @@ func (tab *Tab) AddResultUrl(method string, _url string, source string) {
 	}
 	referer := navUrl.String()
 
-	// 处理Host绑定
+	// Apply Host binding
 	if host, ok := tab.NavigateReq.Headers["Host"]; ok {
 		if host != navUrl.Hostname() && url.Hostname() == host {
 			url, _ = model2.GetUrl(strings.Replace(url.String(), "://"+url.Hostname(), "://"+navUrl.Hostname(), -1), *navUrl)
@@ -259,12 +260,12 @@ func (tab *Tab) AddResultUrl(method string, _url string, source string) {
 			referer = strings.Replace(navUrl.String(), navUrl.Host, host.(string), -1)
 		}
 	}
-	// 添加Cookie
+	// Add cookies
 	if cookie, ok := tab.NavigateReq.Headers["Cookie"]; ok {
 		option.Headers["Cookie"] = cookie
 	}
 
-	// 修正Referer
+	// Fix up the Referer
 	option.Headers["Referer"] = referer
 	for key, value := range tab.ExtraHeaders {
 		option.Headers[key] = value
@@ -277,8 +278,9 @@ func (tab *Tab) AddResultUrl(method string, _url string, source string) {
 	tab.lock.Unlock()
 }
 
-/**
-添加请求到结果列表，拦截请求时处理了Host绑定，此处无需处理
+/*
+*
+Add the request to the result list; Host binding was already handled during interception, so nothing to do here
 */
 func (tab *Tab) AddResultRequest(req model2.Request) {
 	for key, value := range tab.ExtraHeaders {
@@ -289,8 +291,9 @@ func (tab *Tab) AddResultRequest(req model2.Request) {
 	tab.lock.Unlock()
 }
 
-/**
-获取当前标签页CDP的执行上下文
+/*
+*
+Get the CDP execution context for this tab
 */
 func (tab *Tab) GetExecutor() context.Context {
 	c := chromedp.FromContext(*tab.Ctx)
@@ -298,8 +301,9 @@ func (tab *Tab) GetExecutor() context.Context {
 	return ctx
 }
 
-/**
-关闭弹窗
+/*
+*
+Close the dialog
 */
 func (tab *Tab) dismissDialog() {
 	defer tab.WG.Done()
@@ -307,8 +311,9 @@ func (tab *Tab) dismissDialog() {
 	_ = page.HandleJavaScriptDialog(false).Do(ctx)
 }
 
-/**
-处理回调
+/*
+*
+Handle the callback
 */
 func (tab *Tab) HandleBindingCalled(event *runtime.EventBindingCalled) {
 	defer tab.WG.Done()
@@ -324,8 +329,9 @@ func (tab *Tab) HandleBindingCalled(event *runtime.EventBindingCalled) {
 	tab.Evaluate(fmt.Sprintf(js.DeliverResultJS, bcPayload.Name, bcPayload.Seq, "s"))
 }
 
-/**
-执行JS
+/*
+*
+Execute JS
 */
 func (tab *Tab) Evaluate(expression string) {
 	ctx := tab.GetExecutor()
@@ -340,16 +346,18 @@ func (tab *Tab) Evaluate(expression string) {
 	}
 }
 
-/**
-立即根据条件获取Nodes的ID，不等待
+/*
+*
+Fetch Node IDs matching the condition immediately, without waiting
 */
 func (tab *Tab) GetNodeIDs(sel string) ([]cdp.NodeID, error) {
 	ctx := tab.GetExecutor()
 	return dom.QuerySelectorAll(tab.DocBodyNodeId, sel).Do(ctx)
 }
 
-/**
-根据给的Node执行JS
+/*
+*
+Execute JS against the given Node
 */
 func (tab *Tab) EvaluateWithNode(expression string, node *cdp.Node) error {
 	ctx := tab.GetExecutor()
@@ -361,8 +369,9 @@ func (tab *Tab) EvaluateWithNode(expression string, node *cdp.Node) error {
 	return nil
 }
 
-/**
-识别页面的编码
+/*
+*
+Detect the page encoding
 */
 func (tab *Tab) DetectCharset() {
 	ctx := tab.GetExecutor()

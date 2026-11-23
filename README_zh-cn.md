@@ -1,4 +1,4 @@
-# crawlergo
+# rad
 
 ![chromedp](https://img.shields.io/badge/chromedp-v0.5.2-brightgreen.svg)  [![BlackHat EU Arsenal](https://img.shields.io/badge/BlackHat%20Europe-2021%20Arsenal-blue.svg)](https://www.blackhat.com/eu-21/arsenal/schedule/index.html#crawlergo-a-powerful-browser-crawler-for-web-vulnerability-scanners-25113)
 
@@ -6,9 +6,11 @@
 
 [English Document](./README.md) | 中文文档
 
-crawlergo是一个使用`chrome headless`模式进行URL收集的浏览器爬虫。它对整个网页的关键位置与DOM渲染阶段进行HOOK，自动进行表单填充并提交，配合智能的JS事件触发，尽可能的收集网站暴露出的入口。内置URL去重模块，过滤掉了大量伪静态URL，对于大型网站仍保持较快的解析与抓取速度，最后得到高质量的请求结果集合。
+> **rad** 是 [crawlergo](https://github.com/Qianlitp/crawlergo) 的重命名分支，原作者 Qianlitp（[@9ian1i](https://github.com/Qianlitp)）。保留上游署名与 GPLv3 许可证。
 
-crawlergo 目前支持以下特性：
+rad是一个使用`chrome headless`模式进行URL收集的浏览器爬虫。它对整个网页的关键位置与DOM渲染阶段进行HOOK，自动进行表单填充并提交，配合智能的JS事件触发，尽可能的收集网站暴露出的入口。内置URL去重模块，过滤掉了大量伪静态URL，对于大型网站仍保持较快的解析与抓取速度，最后得到高质量的请求结果集合。
+
+rad 目前支持以下特性：
 
 * 原生浏览器环境，协程池调度任务
 * 表单智能填充、自动化提交
@@ -39,9 +41,9 @@ make build
 make build_all
 ```
 
-1. crawlergo 只依赖chrome运行即可，前往[下载](https://www.chromium.org/getting-involved/download-chromium)新版本的chromium。
-2. 前往[页面下载](https://github.com/0Kee-Team/crawlergo/releases)最新版本的crawlergo解压到任意目录，如果是linux或者macOS系统，请赋予crawlergo**可执行权限(+x)**。
-3. 或者直接根据源码自行编译。
+1. rad 只依赖chrome运行即可，前往[下载](https://www.chromium.org/getting-involved/download-chromium)新版本的chromium。
+2. 在本仓库执行 `make build` 编译，产物为 `./bin/rad`，复制到任意目录即可。如果是linux或者macOS系统，请赋予rad**可执行权限(+x)**。
+3. 上游 crawlergo 的[发布页](https://github.com/0Kee-Team/crawlergo/releases)提供预编译包，但二进制名为 `crawlergo`；需要 `rad` 请从本仓库编译。
 
 > 如果你使用linux系统，运行时chrome提示缺少一些依赖组件，请看下方 Trouble Shooting
 
@@ -52,7 +54,7 @@ make build_all
 假设你的chromium安装在 `/tmp/chromium/` ，开启最大10标签页，爬取AWVS靶场：
 
 ```shell
-bin/crawlergo -c /tmp/chromium/chrome -t 10 http://testphp.vulnweb.com/
+bin/rad -c /tmp/chromium/chrome -t 10 http://testphp.vulnweb.com/
 ```
 
 
@@ -60,14 +62,14 @@ bin/crawlergo -c /tmp/chromium/chrome -t 10 http://testphp.vulnweb.com/
 ### 使用代理
 
 ```shell
-bin/crawlergo -c /tmp/chromium/chrome -t 10 --request-proxy socks5://127.0.0.1:7891 http://testphp.vulnweb.com/
+bin/rad -c /tmp/chromium/chrome -t 10 --request-proxy socks5://127.0.0.1:7891 http://testphp.vulnweb.com/
 ```
 
 
 
 ### 系统调用
 
-默认打印当前域名请求，但多数情况我们希望调用crawlergo返回的结果，所以设置输出模式为 `json`，使用python调用并收集结果的示例如下：
+默认打印当前域名请求，但多数情况我们希望调用rad返回的结果，所以设置输出模式为 `json`，使用python调用并收集结果的示例如下：
 
 ```python
 #!/usr/bin/python3
@@ -79,7 +81,7 @@ import subprocess
 
 def main():
     target = "http://testphp.vulnweb.com/"
-    cmd = ["bin/crawlergo", "-c", "/tmp/chromium/chrome", "-o", "json", target]
+    cmd = ["bin/rad", "-c", "/tmp/chromium/chrome", "-o", "json", target]
     rsp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = rsp.communicate()
 	#  "--[Mission Complete]--"  是任务结束的分隔字符串
@@ -105,7 +107,7 @@ if __name__ == '__main__':
 
 ## 完整参数说明
 
-crawlergo 拥有灵活的参数配置，以下是详细的选项说明：
+rad 拥有灵活的参数配置，以下是详细的选项说明：
 
 * `--chromium-path Path, -c Path`    chrome的可执行程序路径
 * `--custom-headers Headers`   自定义HTTP头，使用传入json序列化之后的数据，这个是全局定义，将被用于所有请求
@@ -118,14 +120,14 @@ crawlergo 拥有灵活的参数配置，以下是详细的选项说明：
 * `--fuzz-path`  使用常见路径Fuzz目标，获取更多入口。
 * `--fuzz-path-dict`  通过字典文件自定义Fuzz目录，传入字典文件路径，如：`/home/user/fuzz_dir.txt`，文件每行代表一个要fuzz的目录。
 * `--robots-path` 从 /robots.txt 文件中解析路径，获取更多入口。
-* `--request-proxy proxyAddress` 支持**socks5**代理，crawlergo和chrome浏览器的所有网络请求均经过代理发送。
+* `--request-proxy proxyAddress` 支持**socks5**代理，rad和chrome浏览器的所有网络请求均经过代理发送。
 * `--tab-run-timeout Timeout`   单个Tab标签页的最大运行超时。
 * `--wait-dom-content-loaded-timeout Timeout`  爬虫等待页面加载完毕的最大超时。
 * `--event-trigger-interval Interval` 事件自动触发时的间隔时间，一般用于目标网络缓慢，DOM更新冲突时导致的URL漏抓。
 * `--event-trigger-mode Value` 事件自动触发的模式，分为异步和同步，用于DOM更新冲突时导致的URL漏抓。
 * `--before-exit-delay` 单个tab标签页任务结束时，延迟退出关闭chrome的时间，用于等待部分DOM更新和XHR请求的发起捕获。
 * `--ignore-url-keywords` 不想访问的URL关键字，一般用于在携带Cookie访问时排除注销链接。用法：`-iuk logout -iuk exit`。
-* `--form-values` 自定义表单填充的值，按照文本类型设置。支持定义类型：default, mail, code, phone, username, password, qq, id_card, url, date, number，文本类型通过输入框标签的`id`、`name`、`class`、`type`四个属性值关键字进行识别。如，定义邮箱输入框自动填充A，密码输入框自动填充B，`-fv mail=A -fv password=B`。其中default代表无法识别文本类型时的默认填充值，目前为Cralwergo。
+* `--form-values` 自定义表单填充的值，按照文本类型设置。支持定义类型：default, mail, code, phone, username, password, qq, id_card, url, date, number，文本类型通过输入框标签的`id`、`name`、`class`、`type`四个属性值关键字进行识别。如，定义邮箱输入框自动填充A，密码输入框自动填充B，`-fv mail=A -fv password=B`。其中default代表无法识别文本类型时的默认填充值，目前为Rad。
 * `--form-keyword-values` 自定义表单填充的值，按照关键字模糊匹配设置。关键字匹配输入框标签的`id`、`name`、`class`、`type`四个属性值。如，模糊匹配pass关键词填充123456，user关键词填充admin，`-fkv user=admin -fkv pass=123456`。
 * `--push-to-proxy` 拟接收爬虫结果的监听地址，一般为被动扫描器的监听地址。
 * `--push-pool-max` 发送爬虫结果到监听地址时的最大并发数。
@@ -136,13 +138,13 @@ crawlergo 拥有灵活的参数配置，以下是详细的选项说明：
 
 ## 使用举例
 
-crawlergo 返回了全量的请求和URL信息，可以有多种使用方法：
+rad 返回了全量的请求和URL信息，可以有多种使用方法：
 
 * 联动其它的开源被动扫描器
 
   首先，启动某被动扫描器，设置监听地址为：`http://127.0.0.1:1234/`。
 
-  接下来，假设crawlergo与扫描器在同一台机器，启动 crawlergo，设置参数：
+  接下来，假设rad与扫描器在同一台机器，启动 rad，设置参数：
 
   `--push-to-proxy http://127.0.0.1:1234/`
 
@@ -152,11 +154,11 @@ crawlergo 返回了全量的请求和URL信息，可以有多种使用方法：
 
 * 结合celery实现分布式扫描
 
-* Host绑定设置（高版本chrome无法使用）  [(查看例子)](https://github.com/0Kee-Team/crawlergo/blob/master/examples/host_binding.py)
+* Host绑定设置（高版本chrome无法使用）  [(查看例子)](./examples/host_binding.py)
 
-* 带Cookie扫描  [(查看例子)](https://github.com/0Kee-Team/crawlergo/blob/master/examples/request_with_cookie.py)
+* 带Cookie扫描  [(查看例子)](./examples/request_with_cookie.py)
 
-* 调用crawlergo调用产生僵尸进程，定时清理 [(查看例子)](https://github.com/0Kee-Team/crawlergo/blob/master/examples/zombie_clean.py) , contributed by @ring04h
+* 调用rad产生僵尸进程，定时清理 [(查看例子)](./examples/zombie_clean.py) , contributed by @ring04h
 
 ## Trouble Shooting
 

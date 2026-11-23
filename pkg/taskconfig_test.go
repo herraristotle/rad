@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Qianlitp/crawlergo/pkg"
-	"github.com/Qianlitp/crawlergo/pkg/config"
+	"github.com/herraristotle/rad/pkg"
+	"github.com/herraristotle/rad/pkg/config"
 	"github.com/stretchr/testify/assert"
 )
 
