@@ -15,9 +15,7 @@ proxy: ""                         # proxy for all requests
 user_agent: ""                    # request user-agent; empty uses the browser's real UA
 domain_headers:                   # per-domain headers: []{domain, map[headerKey]HeaderValue}
   - domain: '*'                   # which domains, glob syntax
-    headers: {                    # headers, map[key]value
-      Cookie: somecookie
-    }
+    headers: {}                   # headers, map[key]value
 max_depth: 10                     # maximum page depth
 navigate_timeout_second: 10       # navigation timeout, seconds
 load_timeout_second: 10           # page load timeout, seconds
