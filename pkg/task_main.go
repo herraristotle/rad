@@ -11,6 +11,7 @@ import (
 	filter2 "github.com/herraristotle/rad/pkg/filter"
 	"github.com/herraristotle/rad/pkg/logger"
 	"github.com/herraristotle/rad/pkg/model"
+	"github.com/herraristotle/rad/pkg/rconfig"
 
 	"github.com/panjf2000/ants/v2"
 )
@@ -26,6 +27,7 @@ type CrawlerTask struct {
 	taskWG        sync.WaitGroup       // 等待协程池所有任务结束
 	crawledCount  int                  // 爬取过的数量
 	taskCountLock sync.Mutex           // 已爬取的任务总数锁
+	siteVisits    map[string]int       // pages crawled per site
 	Start         time.Time            //开始时间
 
 }
@@ -50,17 +52,18 @@ type tabTask struct {
 */
 func NewCrawlerTask(targets []*model.Request, taskConf TaskConfig) (*CrawlerTask, error) {
 	crawlerTask := CrawlerTask{
-		Result: &Result{},
-		Config: &taskConf,
+		Result:     &Result{},
+		Config:     &taskConf,
+		siteVisits: map[string]int{},
 	}
 
 	baseFilter := filter.NewSimpleFilter(targets[0].URL.Host)
 
 	if taskConf.FilterMode == config.SmartFilterMode {
-		crawlerTask.filter = filter.NewSmartFilter(baseFilter, false)
+		crawlerTask.filter = filter.NewSmartFilterWithOptions(baseFilter, false, taskConf.ParentPathDetect)
 
 	} else if taskConf.FilterMode == config.StrictFilterMode {
-		crawlerTask.filter = filter.NewSmartFilter(baseFilter, true)
+		crawlerTask.filter = filter.NewSmartFilterWithOptions(baseFilter, true, taskConf.ParentPathDetect)
 
 	} else {
 		crawlerTask.filter = baseFilter
@@ -110,7 +113,14 @@ func NewCrawlerTask(targets []*model.Request, taskConf TaskConfig) (*CrawlerTask
 	if len(taskConf.ChromiumWSUrl) > 0 {
 		crawlerTask.Browser = engine2.ConnectBrowser(taskConf.ChromiumWSUrl, taskConf.ExtraHeaders)
 	} else {
-		crawlerTask.Browser = engine2.InitBrowser(taskConf.ChromiumPath, taskConf.ExtraHeaders, taskConf.Proxy, taskConf.NoHeadless)
+		crawlerTask.Browser = engine2.InitBrowserWithOptions(engine2.BrowserOptions{
+			ChromiumPath: taskConf.ChromiumPath,
+			ExtraHeaders: taskConf.ExtraHeaders,
+			Proxy:        taskConf.Proxy,
+			NoHeadless:   taskConf.NoHeadless,
+			EnableImage:  taskConf.EnableImage,
+			ForceSandbox: taskConf.ForceSandbox,
+		})
 	}
 	crawlerTask.RootDomain = targets[0].URL.RootDomain()
 
@@ -165,6 +175,10 @@ func (t *CrawlerTask) Run() {
 
 	var initTasks []*model.Request
 	for _, req := range t.Targets {
+		if !t.Config.NewTaskFilter.Match(req) {
+			logger.Logger.Debugf("filter req by new_task_filter_config: " + req.URL.RequestURI())
+			continue
+		}
 		if t.filter.DoFilter(req) {
 			logger.Logger.Debugf("filter req: " + req.URL.RequestURI())
 			continue
@@ -200,13 +214,66 @@ func (t *CrawlerTask) Run() {
 	t.Result.SubDomainList = SubDomainCollect(t.Result.AllReqList, t.RootDomain)
 }
 
+// headersFor resolves the global headers plus any rad_config.yml
+// domain_headers entry that matches the request's hostname.
+func (t *CrawlerTask) headersFor(req *model.Request) map[string]interface{} {
+	headers := map[string]interface{}{}
+	for key, value := range t.Config.ExtraHeaders {
+		headers[key] = value
+	}
+	if t.Config.UserAgent != "" {
+		headers["User-Agent"] = t.Config.UserAgent
+	}
+	if req == nil || req.URL == nil {
+		return headers
+	}
+	hostname := req.URL.Hostname()
+	for _, entry := range t.Config.DomainHeaders {
+		if !rconfig.DomainMatch(entry.Domain, hostname) {
+			continue
+		}
+		for key, value := range entry.Headers {
+			headers[key] = value
+		}
+	}
+	return headers
+}
+
+// allowDepth reports whether req is still within max_depth. Depth 0 means
+// unlimited.
+func (t *CrawlerTask) allowDepth(req *model.Request) bool {
+	if t.Config.MaxDepth <= 0 || req.Depth <= t.Config.MaxDepth {
+		return true
+	}
+	logger.Logger.Debugf("filter req by max_depth: " + req.URL.RequestURI())
+	return false
+}
+
 /*
 *
 添加任务到协程池
 添加之前实时过滤
 */
 func (t *CrawlerTask) addTask2Pool(req *model.Request) {
+	// A request that may not be sent must never reach the pool.
+	if !t.Config.RequestSendFilter.Match(req) {
+		logger.Logger.Debugf("filter req by request_send_filter_config: " + req.URL.RequestURI())
+		return
+	}
+	if !t.allowDepth(req) {
+		return
+	}
+
 	t.taskCountLock.Lock()
+	if t.Config.MaxPageVisitPerSite > 0 {
+		site := req.URL.RootDomain()
+		if t.siteVisits[site] >= t.Config.MaxPageVisitPerSite {
+			t.taskCountLock.Unlock()
+			logger.Logger.Debugf("filter req by max_page_visit_per_site: " + req.URL.RequestURI())
+			return
+		}
+		t.siteVisits[site]++
+	}
 	if t.crawledCount >= t.Config.MaxCrawlCount {
 		t.taskCountLock.Unlock()
 		return
@@ -259,20 +326,37 @@ func (t *tabTask) Task() {
 		IgnoreKeywords:          t.crawlerTask.Config.IgnoreKeywords,
 		CustomFormValues:        t.crawlerTask.Config.CustomFormValues,
 		CustomFormKeywordValues: t.crawlerTask.Config.CustomFormKeywordValues,
+		Headers:                 t.crawlerTask.headersFor(t.req),
+		MaxInteractive:          t.crawlerTask.Config.MaxInteractive,
+		Retry:                   t.crawlerTask.Config.Retry,
 	})
 	tab.Start()
 
+	// The output filter applies to everything rad reports, so drop blocked
+	// requests before they reach either result list.
+	reportable := make([]*model.Request, 0, len(tab.ResultList))
+	for _, req := range tab.ResultList {
+		if !t.crawlerTask.Config.RequestOutputFilter.Match(req) {
+			logger.Logger.Debugf("filter req by request_output_filter_config: " + req.URL.RequestURI())
+			continue
+		}
+		reportable = append(reportable, req)
+	}
+
 	// 收集结果
 	t.crawlerTask.Result.resultLock.Lock()
-	t.crawlerTask.Result.AllReqList = append(t.crawlerTask.Result.AllReqList, tab.ResultList...)
+	t.crawlerTask.Result.AllReqList = append(t.crawlerTask.Result.AllReqList, reportable...)
 	t.crawlerTask.Result.resultLock.Unlock()
 
-	for _, req := range tab.ResultList {
+	for _, req := range reportable {
 		if !t.crawlerTask.filter.DoFilter(req) {
 			t.crawlerTask.Result.resultLock.Lock()
 			t.crawlerTask.Result.ReqList = append(t.crawlerTask.Result.ReqList, req)
 			t.crawlerTask.Result.resultLock.Unlock()
 			if !engine2.IsIgnoredByKeywordMatch(*req, t.crawlerTask.Config.IgnoreKeywords) {
+				// Discovered requests are one level deeper than the page
+				// that produced them.
+				req.Depth = t.req.Depth + 1
 				t.crawlerTask.addTask2Pool(req)
 			}
 		}

@@ -172,10 +172,61 @@ https://intoli.com/blog/not-possible-to-block-chrome-headless/chrome-headless-te
 
 
 
+## Configuration file
+
+rad can be driven entirely by a YAML config file. Pass `--config`/`-C` a path;
+if the file does not exist rad writes a fully commented default there and exits
+so you can review it first. When `-C` is omitted, `rad_config.yml` in the working
+directory is used if present.
+
+```shell
+rad -C rad_config.yml http://example.com
+```
+
+Keys (all optional):
+
+| Key | Default | Meaning |
+|---|---|---|
+| `exec_path` | `""` | Path to the chrome executable |
+| `disable_headless` | `false` | Disable headless mode |
+| `force_sandbox` | `false` | Force the chrome sandbox on |
+| `enable_image` | `false` | Load images |
+| `parent_path_detect` | `true` | Parent-directory pseudo-static detection |
+| `proxy` | `""` | Proxy for all requests |
+| `user_agent` | `""` | Request UA; **empty uses the browser's real UA** |
+| `domain_headers` | | Per-domain headers, glob syntax, e.g. `[{domain: "*", headers: {Cookie: x}}]` |
+| `max_depth` | `10` | Maximum page depth (0 = unlimited) |
+| `navigate_timeout_second` | `10` | Navigation timeout |
+| `load_timeout_second` | `10` | Page-load timeout |
+| `retry` | `0` | Navigation retries after a failure |
+| `max_interactive` | `1000` | Maximum element interactions per page |
+| `max_page_concurrent` | `10` | Maximum concurrent pages |
+| `max_page_visit` | `1000` | Total pages allowed |
+| `max_page_visit_per_site` | `1000` | Pages allowed per site |
+| `new_task_filter_config` | | Whether a link may enter the crawl queue |
+| `request_send_filter_config` | | Whether a request may be sent |
+| `request_output_filter_config` | | Whether a request may be reported |
+
+Each filter config accepts `hostname_allowed`/`hostname_disallowed`
+(`t.com`, `*.t.com`, `1.1.1.1`, `1.1.1.1/24`, `1.1-4.1.1-8`),
+`port_allowed`/`port_disallowed` (`80`, `80-85`), and
+`path_`, `query_key_`, `fragment_`, `post_key_` allow/disallow glob lists.
+Empty lists impose no restriction.
+
+Command-line flags always win over the config file: only flags you actually
+pass override a YAML value.
+
+### User agent
+
+`user_agent: ""` means rad sends **no** `User-Agent` override, so Chrome's real
+UA is used. That is the default and the recommended setting. Set it only when
+you need a fixed UA.
+
 ## Parameters
 ### Required parameters
 * `--chromium-path Path, -c Path`    The path to the chrome executable. (**Required**)
 ### Basic parameters
+* `--config Path, -C Path`  Path of the YAML config file. If it does not exist, a default `rad_config.yml` is written and rad exits. (Default: `./rad_config.yml` if present)
 * `--custom-headers Headers`   Customize the HTTP header. Please pass in the data after JSON serialization, this is globally defined and will be used for all requests. (Default: null)
 * `--post-data PostData, -d PostData`   POST data. (Default: null)
 * `--max-crawled-count Number, -m Number`    The maximum number of tasks for crawlers to avoid long crawling time due to pseudo-static. (Default: 200)

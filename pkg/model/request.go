@@ -37,6 +37,7 @@ type Request struct {
 	Source          string
 	RedirectionFlag bool
 	Proxy           string
+	Depth           int // link depth from the initial target; 0 for targets
 }
 
 var supportContentType = []string{config.JSON, config.URLENCODED}

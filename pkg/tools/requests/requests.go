@@ -13,8 +13,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+// DefaultUa is used by the standalone HTTP client, which has no browser to
+// inherit a user agent from.
 const DefaultUa = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)" +
-	" Chrome/76.0.3809.132 Safari/537.36 C845D9D38B3A68F4F74057DB542AD252 tx/2.0"
+	" Chrome/120.0.0.0 Safari/537.36"
 
 const defaultTimeout int = 15
 

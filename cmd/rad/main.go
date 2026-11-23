@@ -16,6 +16,7 @@ import (
 	"github.com/herraristotle/rad/pkg/config"
 	"github.com/herraristotle/rad/pkg/logger"
 	model2 "github.com/herraristotle/rad/pkg/model"
+	"github.com/herraristotle/rad/pkg/rconfig"
 	"github.com/herraristotle/rad/pkg/tools"
 	"github.com/herraristotle/rad/pkg/tools/requests"
 	"github.com/panjf2000/ants/v2"
@@ -67,6 +68,7 @@ var (
 	pushProxyWG             sync.WaitGroup
 	outputJsonPath          string
 	logLevel                string
+	configFile              string
 	Version                 string
 )
 
@@ -110,6 +112,24 @@ func run(c *cli.Context) error {
 		logger.Logger.Fatal(err)
 	}
 	logger.Logger.SetLevel(level)
+
+	// Resolve the config file: an explicit -config, else rad_config.yml in the
+	// working directory if one exists.
+	if configFile == "" {
+		configFile = rconfig.FindDefault()
+	}
+	if configFile != "" {
+		cfg, cfgErr := rconfig.Load(configFile)
+		if cfgErr == rconfig.ErrCreated {
+			fmt.Fprintf(os.Stderr, "created default config at %s, review it and run again\n", configFile)
+			return nil
+		}
+		if cfgErr != nil {
+			return cfgErr
+		}
+		applyConfig(c, cfg)
+		logger.Logger.Info("loaded config: ", configFile)
+	}
 
 	var targets []*model2.Request
 	for _, _url := range c.Args().Slice() {
@@ -330,4 +350,57 @@ func getJsonSerialize(result *pkg.Result) []byte {
 		log.Fatal("Marshal result error")
 	}
 	return resBytes
+}
+
+// applyConfig copies the YAML config onto taskConfig. Explicit command-line
+// flags win: a value already set on the command line is never overwritten.
+// c.IsSet reports whether the flag actually appeared on the command line, as
+// opposed to being the built-in default.
+func applyConfig(c *cli.Context, cfg *rconfig.Config) {
+	taskConfig.ConfigFile = configFile
+
+	// Browser and connection.
+	if !c.IsSet("chromium-path") && cfg.ExecPath != "" {
+		taskConfig.ChromiumPath = cfg.ExecPath
+	}
+	if cfg.DisableHeadless && !c.IsSet("no-headless") {
+		taskConfig.NoHeadless = true
+	}
+	if !c.IsSet("request-proxy") && cfg.Proxy != "" {
+		taskConfig.Proxy = cfg.Proxy
+	}
+	taskConfig.UserAgent = cfg.UserAgent
+	taskConfig.DomainHeaders = cfg.DomainHeaders
+
+	// Timeouts and retries.
+	if cfg.NavigateTimeoutSecond > 0 && !c.IsSet("tab-run-timeout") {
+		taskConfig.TabRunTimeout = time.Duration(cfg.NavigateTimeoutSecond) * time.Second
+	}
+	if cfg.LoadTimeoutSecond > 0 && !c.IsSet("wait-dom-content-loaded-timeout") {
+		taskConfig.DomContentLoadedTimeout = time.Duration(cfg.LoadTimeoutSecond) * time.Second
+	}
+	taskConfig.Retry = cfg.Retry
+
+	// Page and depth limits.
+	if cfg.MaxPageVisit > 0 && !c.IsSet("max-crawled-count") {
+		taskConfig.MaxCrawlCount = cfg.MaxPageVisit
+	}
+	if cfg.MaxPageConcurrent > 0 && !c.IsSet("max-tab-count") {
+		taskConfig.MaxTabsCount = cfg.MaxPageConcurrent
+	}
+	taskConfig.MaxDepth = cfg.MaxDepth
+	taskConfig.MaxInteractive = cfg.MaxInteractive
+	taskConfig.MaxInteractiveDepth = cfg.MaxInteractiveDepth
+	taskConfig.MaxPageVisitPerSite = cfg.MaxPageVisitPerSite
+
+	// Screenshots / images are handled by the browser layer; record the intent
+	// so callers can inspect it.
+	taskConfig.EnableImage = cfg.EnableImage
+	taskConfig.ForceSandbox = cfg.ForceSandbox
+	taskConfig.ParentPathDetect = cfg.ParentPathDetect
+
+	// Filters.
+	taskConfig.NewTaskFilter = cfg.NewTaskFilterConfig
+	taskConfig.RequestSendFilter = cfg.RequestSendFilterConfig
+	taskConfig.RequestOutputFilter = cfg.RequestOutputFilterConfig
 }

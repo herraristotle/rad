@@ -61,6 +61,14 @@ type TabConfig struct {
 	Proxy                   string
 	CustomFormValues        map[string]string
 	CustomFormKeywordValues map[string]string
+	// Headers resolved for this specific tab: global headers plus any
+	// domain_headers entry matching the target, including a UA override.
+	Headers map[string]interface{}
+	// MaxInteractive caps how many elements a single page may interact with;
+	// 0 keeps the built-in limit.
+	MaxInteractive int
+	// Retry is the number of extra navigation attempts after a failure.
+	Retry int
 }
 
 type bindingCallPayload struct {
@@ -74,11 +82,20 @@ func NewTab(browser *Browser, navigateReq model2.Request, config TabConfig) *Tab
 	tab.ExtraHeaders = map[string]interface{}{}
 	var DOMContentLoadedRun = false
 	tab.Ctx, tab.Cancel = browser.NewTab(config.TabRunTimeout)
+	// Resolved per-tab headers win over the browser-wide defaults, so a
+	// domain_headers match (and a configured user_agent) applies only where
+	// intended.
 	for key, value := range browser.ExtraHeaders {
 		navigateReq.Headers[key] = value
 		if key != "Host" {
 			tab.ExtraHeaders[key] = value
 		}
+	}
+	for key, value := range config.Headers {
+		if key == "Host" {
+			continue
+		}
+		tab.ExtraHeaders[key] = value
 	}
 	tab.NavigateReq = navigateReq
 	tab.config = config
@@ -161,37 +178,26 @@ func NewTab(browser *Browser, navigateReq model2.Request, config TabConfig) *Tab
 func (tab *Tab) Start() {
 	logger.Logger.Info("Crawling " + tab.NavigateReq.Method + " " + tab.NavigateReq.URL.String())
 	defer tab.Cancel()
-	if err := chromedp.Run(*tab.Ctx,
-		RunWithTimeOut(tab.Ctx, tab.config.DomContentLoadedTimeout, chromedp.Tasks{
-			//
-			runtime.Enable(),
-			// Enable the network layer API
-			network.Enable(),
-			// Enable the request interception API
-			fetch.Enable().WithHandleAuthRequests(true),
-			// Bind the callback
-			// callback used by XSS-Scan
-			runtime.AddBinding("addLink"),
-			runtime.AddBinding("Test"),
-			// Run the initialization JS
-			chromedp.ActionFunc(func(ctx context.Context) error {
-				var err error
-				_, err = page.AddScriptToEvaluateOnNewDocument(js.TabInitJS).Do(ctx)
-				if err != nil {
-					return err
-				}
-				return nil
-			}),
-			network.SetExtraHTTPHeaders(tab.ExtraHeaders),
-			// Navigate
-			chromedp.Navigate(tab.NavigateReq.URL.String()),
-		}),
-	); err != nil {
+
+	attempts := tab.config.Retry + 1
+	if attempts < 1 {
+		attempts = 1
+	}
+	var err error
+	for attempt := 0; attempt < attempts; attempt++ {
+		if attempt > 0 {
+			logger.Logger.Info("retrying navigation, attempt ", attempt+1, "/", attempts, ": ", tab.NavigateReq.URL.String())
+		}
+		err = tab.load(attempt == attempts-1)
+		if err == nil {
+			break
+		}
+	}
+	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			logger.Logger.Debug("Crawling Canceled")
-			return
 		}
-		logger.Logger.Warn("navigate timeout ", tab.NavigateReq.URL.String())
+		return
 	}
 
 	waitDone := func() <-chan struct{} {
@@ -226,6 +232,47 @@ func (tab *Tab) Start() {
 	//	v.SimplePrint()
 	//}
 	// fmt.Println("Finished " + tab.NavigateReq.Method + " " + tab.NavigateReq.URL.String())
+}
+
+func (tab *Tab) load(quiet bool) error {
+	if err := chromedp.Run(*tab.Ctx,
+		RunWithTimeOut(tab.Ctx, tab.config.DomContentLoadedTimeout, chromedp.Tasks{
+			//
+			runtime.Enable(),
+			// Enable the network layer API
+			network.Enable(),
+			// Enable the request interception API
+			fetch.Enable().WithHandleAuthRequests(true),
+			// Bind the callback
+			// callback used by XSS-Scan
+			runtime.AddBinding("addLink"),
+			runtime.AddBinding("Test"),
+			// Run the initialization JS
+			chromedp.ActionFunc(func(ctx context.Context) error {
+				var err error
+				_, err = page.AddScriptToEvaluateOnNewDocument(js.TabInitJS).Do(ctx)
+				if err != nil {
+					return err
+				}
+				// Expose the interaction cap to the event-triggering JS.
+				if tab.config.MaxInteractive > 0 {
+					_, err = page.AddScriptToEvaluateOnNewDocument(
+						fmt.Sprintf("window.__radMaxInteractive = %d;", tab.config.MaxInteractive),
+					).Do(ctx)
+				}
+				return err
+			}),
+			network.SetExtraHTTPHeaders(tab.ExtraHeaders),
+			// Navigate
+			chromedp.Navigate(tab.NavigateReq.URL.String()),
+		}),
+	); err != nil {
+		if !quiet {
+			logger.Logger.Warn("navigate timeout ", tab.NavigateReq.URL.String())
+		}
+		return err
+	}
+	return nil
 }
 
 func RunWithTimeOut(ctx *context.Context, timeout time.Duration, tasks chromedp.Tasks) chromedp.ActionFunc {

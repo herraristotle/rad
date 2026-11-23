@@ -1,13 +1,12 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/herraristotle/rad/pkg/config"
 	"github.com/urfave/cli/v2"
 )
 
 var cliFlags = []cli.Flag{
+	SetConfigFile(),
 	SetChromePath(),
 	SetChromeWSUrl(),
 	SetCustomHeaders(),
@@ -62,7 +61,7 @@ func SetCustomHeaders() *cli.StringFlag {
 	return &cli.StringFlag{
 		Name:        "custom-headers",
 		Usage:       "add additional `Headers` to each request. The input string will be called json.Unmarshal",
-		Value:       fmt.Sprintf(`{"Spider-Name": "rad", "User-Agent": "%s"}`, config.DefaultUA),
+		Value:       `{"Spider-Name": "rad"}`,
 		Destination: &taskConfig.ExtraHeadersString,
 	}
 }
@@ -290,5 +289,14 @@ func SetMaxTime() *cli.Int64Flag {
 		Usage:       "the `Timeout` of the task.",
 		Value:       config.MaxRunTime,
 		Destination: &taskConfig.MaxRunTime,
+	}
+}
+
+func SetConfigFile() *cli.PathFlag {
+	return &cli.PathFlag{
+		Name:        "config",
+		Aliases:     []string{"C"},
+		Usage:       "`Path` of the YAML config file. If it does not exist, a default rad_config.yml is written and rad exits so you can review it.",
+		Destination: &configFile,
 	}
 }

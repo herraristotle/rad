@@ -7,7 +7,10 @@ import (
 )
 
 const (
-	DefaultUA               = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.0 Safari/537.36"
+	// DefaultUA is intentionally empty: an empty user agent means rad uses the
+	// real UA of the browser it drives instead of claiming to be some fixed
+	// Chrome version. Set user_agent in rad_config.yml to override it.
+	DefaultUA               = ""
 	MaxTabsCount            = 10
 	TabRunTimeout           = 20 * time.Second
 	DefaultInputText        = "Rad"

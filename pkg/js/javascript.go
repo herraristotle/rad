@@ -353,8 +353,9 @@ const TriggerInlineEventJS = `
 	for (let eventName of eventNames) {
 		let event = eventName.replace("on", "");
 		let nodeList = document.querySelectorAll("[" + eventName + "]");
-		if (nodeList.length > 100) {
-			nodeList = nodeList.slice(0, 100);
+		let limit = window.__radMaxInteractive || 100;
+		if (nodeList.length > limit) {
+			nodeList = nodeList.slice(0, limit);
 		}
 		nodeList = window.randArr(nodeList);
 		for (let node of nodeList) {
@@ -392,8 +393,9 @@ const TriggerDom2EventJS = `
 		}
 	}
 	let nodes = document.querySelectorAll("[sec_auto_dom2_event_flag]");
-	if (nodes.length > 200) {
-		nodes = nodes.slice(0, 200);
+	let limit = window.__radMaxInteractive || 200;
+	if (nodes.length > limit) {
+		nodes = nodes.slice(0, limit);
 	}
 	nodes = window.randArr(nodes);
 	for (let node of nodes) {

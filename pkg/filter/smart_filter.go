@@ -17,6 +17,8 @@ import (
 
 type SmartFilter struct {
 	StrictMode bool
+	// ParentPathDetect enables the parent-directory pseudo-static heuristic.
+	ParentPathDetect bool
 	*SimpleFilter
 	filterLocationSet          mapset.Set // locations of non-logic params; globally marked for filtering
 	filterParamKeyRepeatCount  sync.Map
@@ -75,7 +77,14 @@ var markedStringRegex = regexp.MustCompile(`^{{.+}}$`)
 var htmlReplaceRegex = regexp.MustCompile(`\.shtml|\.html|\.htm`)
 
 func NewSmartFilter(base *SimpleFilter, strictMode bool) *SmartFilter {
-	s := &SmartFilter{}
+	return NewSmartFilterWithOptions(base, strictMode, true)
+}
+
+// NewSmartFilterWithOptions builds a smart filter. parentPathDetect maps to
+// parent_path_detect in rad_config.yml; when false the parent-directory
+// pseudo-static heuristic is skipped.
+func NewSmartFilterWithOptions(base *SimpleFilter, strictMode, parentPathDetect bool) *SmartFilter {
+	s := &SmartFilter{ParentPathDetect: parentPathDetect}
 	s.filterLocationSet = mapset.NewSet()
 	s.filterParamKeyRepeatCount = sync.Map{}
 	s.filterParamKeySingleValues = sync.Map{}
@@ -552,7 +561,7 @@ func (s *SmartFilter) overCountMark(req *model.Request) {
 	}
 
 	// Handle pseudo-static at this path level
-	if req.URL.ParentPath() == "" || inCommonScriptSuffix(req.URL.FileExt()) {
+	if !s.ParentPathDetect || req.URL.ParentPath() == "" || inCommonScriptSuffix(req.URL.FileExt()) {
 		return
 	}
 	parentPathId := tools.StrMd5(req.URL.ParentPath())

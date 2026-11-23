@@ -21,22 +21,43 @@ type Browser struct {
 	lock         sync.Mutex
 }
 
+// BrowserOptions carries the browser-level settings resolved from the CLI and
+// the YAML config.
+type BrowserOptions struct {
+	ChromiumPath string
+	ExtraHeaders map[string]interface{}
+	Proxy        string
+	NoHeadless   bool
+	EnableImage  bool
+	ForceSandbox bool
+}
+
 func InitBrowser(chromiumPath string, extraHeaders map[string]interface{}, proxy string, noHeadless bool) *Browser {
+	return InitBrowserWithOptions(BrowserOptions{
+		ChromiumPath: chromiumPath,
+		ExtraHeaders: extraHeaders,
+		Proxy:        proxy,
+		NoHeadless:   noHeadless,
+	})
+}
+
+func InitBrowserWithOptions(o BrowserOptions) *Browser {
 	var bro Browser
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 
 		// 无头模式
-		chromedp.Flag("headless", !noHeadless),
+		chromedp.Flag("headless", !o.NoHeadless),
 		// https://github.com/chromedp/chromedp/issues/997#issuecomment-1030596050
 		// incognito mode not used
 		// 禁用GPU，不显示GUI
 		chromedp.Flag("disable-gpu", true),
-		// 取消沙盒模式
-		chromedp.Flag("no-sandbox", true),
+		// Sandbox: keep it off by default (required in most containers), but
+		// honour force_sandbox from the config.
+		chromedp.Flag("no-sandbox", !o.ForceSandbox),
 		// 忽略证书错误
 		chromedp.Flag("ignore-certificate-errors", true),
 
-		chromedp.Flag("disable-images", true),
+		chromedp.Flag("disable-images", !o.EnableImage),
 		//
 		chromedp.Flag("disable-web-security", true),
 		//
@@ -53,14 +74,14 @@ func InitBrowser(chromiumPath string, extraHeaders map[string]interface{}, proxy
 		chromedp.WindowSize(1920, 1080),
 	)
 	// 设置浏览器代理
-	if proxy != "" {
-		opts = append(opts, chromedp.ProxyServer(proxy))
+	if o.Proxy != "" {
+		opts = append(opts, chromedp.ProxyServer(o.Proxy))
 	}
 
-	if len(chromiumPath) > 0 {
+	if len(o.ChromiumPath) > 0 {
 
 		// 指定执行路径
-		opts = append(opts, chromedp.ExecPath(chromiumPath))
+		opts = append(opts, chromedp.ExecPath(o.ChromiumPath))
 	}
 
 	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
@@ -76,7 +97,7 @@ func InitBrowser(chromiumPath string, extraHeaders map[string]interface{}, proxy
 	}
 	bro.Cancel = &cancel
 	bro.Ctx = &bctx
-	bro.ExtraHeaders = extraHeaders
+	bro.ExtraHeaders = o.ExtraHeaders
 	return &bro
 }
 
