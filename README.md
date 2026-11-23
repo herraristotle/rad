@@ -204,7 +204,6 @@ Keys (all optional):
 | `max_page_visit` | `1000` | Total pages allowed |
 | `max_page_visit_per_site` | `1000` | Pages allowed per site |
 | `subdomain` | `true` | Crawl subdomains automatically |
-| `leakless` | `true` | Kill Chrome if rad dies. Accepted for compatibility; rad applies the equivalent guard natively (Linux `Pdeathsig`) |
 | `entrance_retry` | `0` | Extra attempts for the entrance URL |
 | `max_similar_request` | `0` | Max similar fetch/XHR requests per site (<=0 unlimited) |
 | `element_filter_strength` | `0` | Similar-element filtering, 0 off, 1-7 increasing |

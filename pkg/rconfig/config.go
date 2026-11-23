@@ -44,13 +44,9 @@ type FilterConfig struct {
 
 // Config mirrors chaitin/rad's rad_config.yml so pipelines can be ported over.
 type Config struct {
-	ExecPath        string `yaml:"exec_path"`
-	DisableHeadless bool   `yaml:"disable_headless"`
-	Subdomain       bool   `yaml:"subdomain"`
-	// Leakless kills Chrome when rad exits abruptly. Accepted for chaitin/rad
-	// config compatibility; rad implements the equivalent guard itself via
-	// Linux Pdeathsig, which chromedp installs by default.
-	Leakless         bool   `yaml:"leakless"`
+	ExecPath         string `yaml:"exec_path"`
+	DisableHeadless  bool   `yaml:"disable_headless"`
+	Subdomain        bool   `yaml:"subdomain"`
 	ForceSandbox     bool   `yaml:"force_sandbox"`
 	EnableImage      bool   `yaml:"enable_image"`
 	ParentPathDetect bool   `yaml:"parent_path_detect"`

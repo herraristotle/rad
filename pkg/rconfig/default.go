@@ -8,7 +8,6 @@ const DefaultYAML = `# rad configuration file.
 exec_path: ""                     # path to the chrome executable
 disable_headless: false           # disable headless mode
 subdomain: true                   # crawl subdomains automatically
-leakless: true                    # kill chrome if rad dies (native guard on Linux)
 force_sandbox: false              # force sandbox on; false keeps the default (sandbox off in containers)
 enable_image: false               # load images
 parent_path_detect: true          # probe parent directories
