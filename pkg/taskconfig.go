@@ -33,20 +33,25 @@ type TaskConfig struct {
 	MaxRunTime              int64             // 最大爬取时间(单位秒），超时则结束任务，平滑结束（比如某个url还未处理完不能结束，需要一次req完成后才可以结束整个任务）
 
 	// Loaded from rad_config.yml when -config is supplied.
-	ConfigFile          string                 // path of the config file, empty when unused
-	UserAgent           string                 // request UA; empty keeps the browser's real UA
-	DomainHeaders       []rconfig.DomainHeader // per-domain extra headers
-	MaxDepth            int                    // maximum page depth, 0 means unlimited
-	MaxInteractive      int                    // maximum interactions per page, 0 means unlimited
-	MaxInteractiveDepth int                    // interaction depth limit, 0 means unlimited
-	MaxPageVisitPerSite int                    // pages allowed per site, 0 means unlimited
-	EnableImage         bool                   // load images in the browser
-	ForceSandbox        bool                   // force the chrome sandbox on
-	ParentPathDetect    bool                   // enable parent-directory pseudo-static detection
-	Retry               int                    // retries after a failed visit
-	NewTaskFilter       rconfig.FilterConfig   // may this link enter the crawl queue
-	RequestSendFilter   rconfig.FilterConfig   // may this request be sent
-	RequestOutputFilter rconfig.FilterConfig   // may this request be reported
+	ConfigFile            string                 // path of the config file, empty when unused
+	UserAgent             string                 // request UA; empty keeps the browser's real UA
+	DomainHeaders         []rconfig.DomainHeader // per-domain extra headers
+	MaxDepth              int                    // maximum page depth, 0 means unlimited
+	MaxInteractive        int                    // maximum interactions per page, 0 means unlimited
+	MaxInteractiveDepth   int                    // interaction depth limit, 0 means unlimited
+	MaxPageVisitPerSite   int                    // pages allowed per site, 0 means unlimited
+	EnableImage           bool                   // load images in the browser
+	ForceSandbox          bool                   // force the chrome sandbox on
+	ParentPathDetect      bool                   // enable parent-directory pseudo-static detection
+	ElementFilterStrength int                    // 0 disables similar-element filtering, 1-7 increases it
+	PageAnalyzeTimeout    time.Duration          // per-page analysis budget
+	MaxSimilarRequest     int                    // max similar fetch/XHR requests per site, <=0 unlimited
+	EntranceRetry         int                    // retries for the entrance URL
+	Subdomain             bool                   // crawl subdomains automatically
+	Retry                 int                    // retries after a failed visit
+	NewTaskFilter         rconfig.FilterConfig   // may this link enter the crawl queue
+	RequestSendFilter     rconfig.FilterConfig   // may this request be sent
+	RequestOutputFilter   rconfig.FilterConfig   // may this request be reported
 }
 
 type TaskConfigOptFunc func(*TaskConfig)

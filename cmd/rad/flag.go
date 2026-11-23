@@ -6,6 +6,9 @@ import (
 )
 
 var cliFlags = []cli.Flag{
+	SetTarget(),
+	SetUrlFile(),
+	SetWaitLogin(),
 	SetConfigFile(),
 	SetChromePath(),
 	SetChromeWSUrl(),
@@ -15,6 +18,11 @@ var cliFlags = []cli.Flag{
 	SetFilterMod(),
 	SetOutputMode(),
 	SetOutputJSON(),
+	SetTextOutput(),
+	SetFullTextOutput(),
+	SetJSONOutputChaitin(),
+	SetAutoIndex(),
+	SetNoBanner(),
 	//SetIgcognitoContext(),
 	SetMaxTabCount(),
 	SetFuzzPath(),
@@ -116,7 +124,7 @@ func SetOutputJSON() *cli.StringFlag {
 func SetMaxTabCount() *cli.IntFlag {
 	return &cli.IntFlag{
 		Name:        "max-tab-count",
-		Aliases:     []string{"t"},
+		Aliases:     []string{"tab"},
 		Value:       8,
 		Usage:       "maximum `Number` of tabs allowed.",
 		Destination: &taskConfig.MaxTabsCount,
@@ -152,7 +160,8 @@ func SetRobotsPath() *cli.BoolFlag {
 func SetRequestProxy() *cli.StringFlag {
 	return &cli.StringFlag{
 		Name:        "request-proxy",
-		Usage:       "all requests connect through defined proxy server.",
+		Aliases:     []string{"http-proxy"},
+		Usage:       "set upstream `proxy`; all requests connect through it.",
 		Destination: &taskConfig.Proxy,
 	}
 }
@@ -277,8 +286,9 @@ func SetLogLevel() *cli.StringFlag {
 func SetNoHeadless() *cli.BoolFlag {
 	return &cli.BoolFlag{
 		Name:        "no-headless",
+		Aliases:     []string{"disable-headless", "dh"},
 		Value:       false,
-		Usage:       "no headless mode",
+		Usage:       "disable headless mode",
 		Destination: &taskConfig.NoHeadless,
 	}
 }
@@ -298,5 +308,80 @@ func SetConfigFile() *cli.PathFlag {
 		Aliases:     []string{"C"},
 		Usage:       "`Path` of the YAML config file. If it does not exist, a default rad_config.yml is written and rad exits so you can review it.",
 		Destination: &configFile,
+	}
+}
+
+// SetTarget accepts the target via a flag as chaitin/rad does (-t/--target/
+// --url), in addition to positional arguments.
+func SetTarget() *cli.StringSliceFlag {
+	return &cli.StringSliceFlag{
+		Name:        "target",
+		Aliases:     []string{"t", "url", "u"},
+		Usage:       "the `target` that will be crawled",
+		Destination: &targets,
+	}
+}
+
+// SetUrlFile reads targets from a file, one URL per line.
+func SetUrlFile() *cli.PathFlag {
+	return &cli.PathFlag{
+		Name:        "url-file",
+		Aliases:     []string{"uf"},
+		Usage:       "the url-file that will be crawled, one URL per line",
+		Destination: &urlFile,
+	}
+}
+
+// SetWaitLogin disables headless mode and waits for the user to log in before
+// crawling, matching chaitin/rad's -wait-login.
+func SetWaitLogin() *cli.BoolFlag {
+	return &cli.BoolFlag{
+		Name:        "wait-login",
+		Usage:       "open a browser for manual login, then press Enter to start crawling (implies --no-headless)",
+		Destination: &waitLogin,
+	}
+}
+
+func SetTextOutput() *cli.StringFlag {
+	return &cli.StringFlag{
+		Name:        "text-output",
+		Aliases:     []string{"text"},
+		Usage:       "output urls to the specified text `file`",
+		Destination: &textOutputPath,
+	}
+}
+
+func SetFullTextOutput() *cli.StringFlag {
+	return &cli.StringFlag{
+		Name:        "full-text-output",
+		Aliases:     []string{"full"},
+		Usage:       "output full request dump to the specified text `file`",
+		Destination: &fullTextOutputPath,
+	}
+}
+
+func SetJSONOutputChaitin() *cli.StringFlag {
+	return &cli.StringFlag{
+		Name:        "json-output",
+		Aliases:     []string{"json"},
+		Usage:       "output full request dump to the specified json `file`, body encoded with base64",
+		Destination: &jsonOutputPath,
+	}
+}
+
+func SetAutoIndex() *cli.BoolFlag {
+	return &cli.BoolFlag{
+		Name:        "auto-index",
+		Aliases:     []string{"index"},
+		Usage:       "if the output file exists, automatically add a sequence number to the file name",
+		Destination: &autoIndex,
+	}
+}
+
+func SetNoBanner() *cli.BoolFlag {
+	return &cli.BoolFlag{
+		Name:        "no-banner",
+		Usage:       "disable banner print",
+		Destination: &noBanner,
 	}
 }

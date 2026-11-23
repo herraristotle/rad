@@ -40,7 +40,7 @@ func (tab *Tab) AfterLoadedRun() {
 		go tab.triggerJavascriptProtocol()
 		go tab.triggerInlineEvents()
 		go tab.triggerDom2Events()
-		tab.loadedWG.Wait()
+		tab.waitForAnalysis()
 	} else if tab.config.EventTriggerMode == config.EventTriggerSync {
 		tab.triggerInlineEvents()
 		time.Sleep(tab.config.EventTriggerInterval)
@@ -55,6 +55,25 @@ func (tab *Tab) AfterLoadedRun() {
 	go tab.RemoveDOMListener()
 	tab.removeLis.Wait()
 	logger.Logger.Debug("afterLoadedRun end")
+}
+
+// waitForAnalysis waits for the async event triggers, but gives up after
+// page_analyze_timeout_second so one pathological page cannot stall the crawl.
+func (tab *Tab) waitForAnalysis() {
+	if tab.config.PageAnalyzeTimeout <= 0 {
+		tab.loadedWG.Wait()
+		return
+	}
+	done := make(chan struct{})
+	go func() {
+		tab.loadedWG.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(tab.config.PageAnalyzeTimeout):
+		logger.Logger.Warn("page analysis timeout after ", tab.config.PageAnalyzeTimeout, ", continuing: ", tab.NavigateReq.URL.String())
+	}
 }
 
 /*

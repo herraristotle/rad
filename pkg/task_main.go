@@ -12,23 +12,26 @@ import (
 	"github.com/herraristotle/rad/pkg/logger"
 	"github.com/herraristotle/rad/pkg/model"
 	"github.com/herraristotle/rad/pkg/rconfig"
+	"github.com/herraristotle/rad/pkg/tools"
+	"github.com/herraristotle/rad/pkg/tools/requests"
 
 	"github.com/panjf2000/ants/v2"
 )
 
 type CrawlerTask struct {
-	Browser       *engine2.Browser     //
-	RootDomain    string               // 当前爬取根域名 用于子域名收集
-	Targets       []*model.Request     // 输入目标
-	Result        *Result              // 最终结果
-	Config        *TaskConfig          // 配置信息
-	filter        filter.FilterHandler // 过滤对象
-	Pool          *ants.Pool           // 协程池
-	taskWG        sync.WaitGroup       // 等待协程池所有任务结束
-	crawledCount  int                  // 爬取过的数量
-	taskCountLock sync.Mutex           // 已爬取的任务总数锁
-	siteVisits    map[string]int       // pages crawled per site
-	Start         time.Time            //开始时间
+	Browser       *engine2.Browser      //
+	RootDomain    string                // 当前爬取根域名 用于子域名收集
+	Targets       []*model.Request      // 输入目标
+	Result        *Result               // 最终结果
+	Config        *TaskConfig           // 配置信息
+	filter        filter.FilterHandler  // 过滤对象
+	elementFilter *filter.ElementFilter // similar-element filtering
+	Pool          *ants.Pool            // 协程池
+	taskWG        sync.WaitGroup        // 等待协程池所有任务结束
+	crawledCount  int                   // 爬取过的数量
+	taskCountLock sync.Mutex            // 已爬取的任务总数锁
+	siteVisits    map[string]int        // pages crawled per site
+	Start         time.Time             //开始时间
 
 }
 
@@ -67,6 +70,17 @@ func NewCrawlerTask(targets []*model.Request, taskConf TaskConfig) (*CrawlerTask
 
 	} else {
 		crawlerTask.filter = baseFilter
+	}
+
+	// Similar-element filtering, driven by element_filter_strength and
+	// max_similar_request in rad_config.yml.
+	if taskConf.ElementFilterStrength > 0 || taskConf.MaxSimilarRequest > 0 {
+		strength := taskConf.ElementFilterStrength
+		if strength <= 0 {
+			strength = 1
+		}
+		crawlerTask.elementFilter = filter.NewElementFilter(strength)
+		crawlerTask.elementFilter.MaxSimilar = taskConf.MaxSimilarRequest
 	}
 
 	if len(targets) == 1 {
@@ -189,6 +203,9 @@ func (t *CrawlerTask) Run() {
 	logger.Logger.Info("filter repeat, target count: ", len(initTasks))
 
 	for _, req := range initTasks {
+		if t.Config.EntranceRetry > 0 && req.Depth == 0 {
+			t.probeEntrance(req)
+		}
 		if !engine2.IsIgnoredByKeywordMatch(*req, t.Config.IgnoreKeywords) {
 			t.addTask2Pool(req)
 		}
@@ -216,6 +233,24 @@ func (t *CrawlerTask) Run() {
 
 // headersFor resolves the global headers plus any rad_config.yml
 // domain_headers entry that matches the request's hostname.
+// allowHost enforces the subdomain setting: with subdomain=false only the
+// root domain is crawled, so links to subdomains are dropped.
+func (t *CrawlerTask) allowHost(req *model.Request) bool {
+	if t.Config.Subdomain || req == nil || req.URL == nil {
+		return true
+	}
+	host := req.URL.Hostname()
+	root := t.RootDomain
+	if root == "" {
+		return true
+	}
+	if host == root || host == "www."+root {
+		return true
+	}
+	logger.Logger.Debugf("filter req because subdomain crawling is disabled: " + req.URL.RequestURI())
+	return false
+}
+
 func (t *CrawlerTask) headersFor(req *model.Request) map[string]interface{} {
 	headers := map[string]interface{}{}
 	for key, value := range t.Config.ExtraHeaders {
@@ -254,7 +289,28 @@ func (t *CrawlerTask) allowDepth(req *model.Request) bool {
 添加任务到协程池
 添加之前实时过滤
 */
+// probeEntrance performs the entrance_retry attempts for a target, so a
+// transient failure on the very first request does not lose the whole crawl.
+func (t *CrawlerTask) probeEntrance(req *model.Request) {
+	for attempt := 0; attempt < t.Config.EntranceRetry; attempt++ {
+		opts := &requests.ReqOptions{
+			Timeout:       int(t.Config.TabRunTimeout.Seconds()),
+			AllowRedirect: true,
+			Proxy:         t.Config.Proxy,
+		}
+		_, err := requests.Request(req.Method, req.URL.String(),
+			tools.ConvertHeaders(t.headersFor(req)), []byte(req.PostData), opts)
+		if err == nil {
+			return
+		}
+		logger.Logger.Warn("entrance retry ", attempt+1, "/", t.Config.EntranceRetry, ": ", err)
+	}
+}
+
 func (t *CrawlerTask) addTask2Pool(req *model.Request) {
+	if !t.allowHost(req) {
+		return
+	}
 	// A request that may not be sent must never reach the pool.
 	if !t.Config.RequestSendFilter.Match(req) {
 		logger.Logger.Debugf("filter req by request_send_filter_config: " + req.URL.RequestURI())
@@ -329,6 +385,7 @@ func (t *tabTask) Task() {
 		Headers:                 t.crawlerTask.headersFor(t.req),
 		MaxInteractive:          t.crawlerTask.Config.MaxInteractive,
 		Retry:                   t.crawlerTask.Config.Retry,
+		PageAnalyzeTimeout:      t.crawlerTask.Config.PageAnalyzeTimeout,
 	})
 	tab.Start()
 
@@ -349,6 +406,10 @@ func (t *tabTask) Task() {
 	t.crawlerTask.Result.resultLock.Unlock()
 
 	for _, req := range reportable {
+		if t.crawlerTask.elementFilter != nil && t.crawlerTask.elementFilter.DoFilter(req) {
+			logger.Logger.Debugf("filter req by element_filter_strength: " + req.URL.RequestURI())
+			continue
+		}
 		if !t.crawlerTask.filter.DoFilter(req) {
 			t.crawlerTask.Result.resultLock.Lock()
 			t.crawlerTask.Result.ReqList = append(t.crawlerTask.Result.ReqList, req)

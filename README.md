@@ -203,6 +203,11 @@ Keys (all optional):
 | `max_page_concurrent` | `10` | Maximum concurrent pages |
 | `max_page_visit` | `1000` | Total pages allowed |
 | `max_page_visit_per_site` | `1000` | Pages allowed per site |
+| `subdomain` | `true` | Crawl subdomains automatically |
+| `leakless` | `true` | Experimental memory-leak guard (accepted; no-op in this engine) |
+| `entrance_retry` | `0` | Extra attempts for the entrance URL |
+| `max_similar_request` | `0` | Max similar fetch/XHR requests per site (<=0 unlimited) |
+| `element_filter_strength` | `0` | Similar-element filtering, 0 off, 1-7 increasing |
 | `new_task_filter_config` | | Whether a link may enter the crawl queue |
 | `request_send_filter_config` | | Whether a request may be sent |
 | `request_output_filter_config` | | Whether a request may be reported |
@@ -221,6 +226,43 @@ pass override a YAML value.
 `user_agent: ""` means rad sends **no** `User-Agent` override, so Chrome's real
 UA is used. That is the default and the recommended setting. Set it only when
 you need a fixed UA.
+
+## Output formats
+
+rad matches chaitin/rad's three output files:
+
+* `--text-output/-text FILE` — `METHOD URL`, one per line.
+* `--full-text-output/-full FILE` — raw HTTP/1.1 request dumps, separated by a
+  50-dash rule.
+* `--json-output/-json FILE` — a JSON array, one compact object per line:
+  `{"Method","URL","Header","b64_body"}` with the body base64 encoded.
+* `--auto-index/-index` — append `-1`, `-2`, ... when the file already exists.
+
+By default results are printed to stdout as `METHOD URL` lines.
+
+## Parameter precedence
+
+Command-line flags win over the config file. Only flags actually passed on the
+command line override a YAML value, so a config file is never silently ignored.
+
+## chaitin/rad compatibility
+
+The CLI is a drop-in replacement for chaitin/rad's documented usage:
+
+| chaitin/rad | rad |
+|---|---|
+| `rad -t http://x` | same (`-t`/`--target`/`--url`/`-u`) |
+| `rad -t http://x -wait-login` | same |
+| `-text-output`, `-full-text-output`, `-json-output` | same |
+| `-auto-index` | same |
+| `-http-proxy host:port` | same (upstream proxy) |
+| `-disable-headless`, `-dh` | same |
+| `-url-file`, `-uf` | same |
+| `-config`, `-c` | same; `-C` also accepted |
+| `-no-banner` | same |
+
+Because `-t` now means *target* (as in chaitin/rad), the max-tab-count flag uses
+`-tab` instead.
 
 ## Parameters
 ### Required parameters

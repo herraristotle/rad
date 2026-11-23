@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -69,10 +70,30 @@ var (
 	outputJsonPath          string
 	logLevel                string
 	configFile              string
+	targets                 cli.StringSlice
+	urlFile                 string
+	waitLogin               bool
+	textOutputPath          string
+	fullTextOutputPath      string
+	jsonOutputPath          string
+	autoIndex               bool
+	noBanner                bool
 	Version                 string
 )
 
+const banner = `
+██████╗  █████╗ ██████╗
+██╔══██╗██╔══██╗██╔══██╗
+██████╔╝███████║██║  ██║
+██╔══██╗██╔══██║██║  ██║
+██║  ██║██║  ██║██████╔╝
+╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝
+`
+
 func main() {
+	if !noBanner {
+		fmt.Print(banner)
+	}
 	author := cli.Author{
 		Name:  "9ian1i",
 		Email: "9ian1itp@gmail.com",
@@ -101,7 +122,16 @@ func main() {
 func run(c *cli.Context) error {
 	signalChan = make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
-	if c.Args().Len() == 0 {
+	allTargets := append([]string{}, targets.Value()...)
+	allTargets = append(allTargets, c.Args().Slice()...)
+	if urlFile != "" {
+		fileTargets, err := readUrlFile(urlFile)
+		if err != nil {
+			return err
+		}
+		allTargets = append(allTargets, fileTargets...)
+	}
+	if len(allTargets) == 0 {
 		logger.Logger.Error("url must be set")
 		return errors.New("url must be set")
 	}
@@ -131,8 +161,12 @@ func run(c *cli.Context) error {
 		logger.Logger.Info("loaded config: ", configFile)
 	}
 
-	var targets []*model2.Request
-	for _, _url := range c.Args().Slice() {
+	if waitLogin {
+		taskConfig.NoHeadless = true
+	}
+
+	var crawlTargets []*model2.Request
+	for _, _url := range allTargets {
 		var req model2.Request
 		url, err := model2.GetUrl(_url)
 		if err != nil {
@@ -145,14 +179,14 @@ func run(c *cli.Context) error {
 			req = model2.GetRequest(config.GET, url, getOption())
 		}
 		req.Proxy = taskConfig.Proxy
-		targets = append(targets, &req)
+		crawlTargets = append(crawlTargets, &req)
 	}
 	taskConfig.IgnoreKeywords = ignoreKeywords.Value()
 	if taskConfig.Proxy != "" {
 		logger.Logger.Info("request with proxy: ", taskConfig.Proxy)
 	}
 
-	if len(targets) == 0 {
+	if len(crawlTargets) == 0 {
 		logger.Logger.Fatal("no validate target.")
 	}
 
@@ -167,14 +201,14 @@ func run(c *cli.Context) error {
 	}
 
 	// 开始爬虫任务
-	task, err := pkg.NewCrawlerTask(targets, taskConfig)
+	task, err := pkg.NewCrawlerTask(crawlTargets, taskConfig)
 	if err != nil {
 		logger.Logger.Error("create crawler task failed.")
 		os.Exit(-1)
 	}
-	if len(targets) != 0 {
+	if len(crawlTargets) != 0 {
 		logger.Logger.Infof("Init crawler task, host: %s, max tab count: %d, max crawl count: %d, max runtime: %ds",
-			targets[0].URL.Host, taskConfig.MaxTabsCount, taskConfig.MaxCrawlCount, taskConfig.MaxRunTime)
+			crawlTargets[0].URL.Host, taskConfig.MaxTabsCount, taskConfig.MaxCrawlCount, taskConfig.MaxRunTime)
 		logger.Logger.Info("filter mode: ", taskConfig.FilterMode)
 	}
 
@@ -189,6 +223,10 @@ func run(c *cli.Context) error {
 	if _, ok := taskConfig.CustomFormValues["default"]; !ok {
 		logger.Logger.Info("If no matches, default form input text: " + config.DefaultInputText)
 		taskConfig.CustomFormValues["default"] = config.DefaultInputText
+	}
+
+	if waitLogin {
+		waitForLogin()
 	}
 
 	go handleExit(task)
@@ -207,6 +245,9 @@ func run(c *cli.Context) error {
 
 	// 输出结果
 	outputResult(result)
+	if err := applyOutputs(result); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -352,6 +393,32 @@ func getJsonSerialize(result *pkg.Result) []byte {
 	return resBytes
 }
 
+// readUrlFile reads one URL per line, skipping blanks and # comments.
+func readUrlFile(path string) ([]string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var urls []string
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		urls = append(urls, line)
+	}
+	return urls, nil
+}
+
+// waitForLogin blocks until the user presses Enter, matching chaitin/rad's
+// -wait-login flow.
+func waitForLogin() {
+	fmt.Println("您可以在浏览器执行登录操作，登录完成后，按回车继续爬取")
+	fmt.Println("You can try to login and press any key to continue")
+	reader := bufio.NewReader(os.Stdin)
+	_, _ = reader.ReadString('\n')
+}
+
 // applyConfig copies the YAML config onto taskConfig. Explicit command-line
 // flags win: a value already set on the command line is never overwritten.
 // c.IsSet reports whether the flag actually appeared on the command line, as
@@ -398,6 +465,11 @@ func applyConfig(c *cli.Context, cfg *rconfig.Config) {
 	taskConfig.EnableImage = cfg.EnableImage
 	taskConfig.ForceSandbox = cfg.ForceSandbox
 	taskConfig.ParentPathDetect = cfg.ParentPathDetect
+	taskConfig.ElementFilterStrength = cfg.ElementFilterStrength
+	taskConfig.PageAnalyzeTimeout = time.Duration(cfg.PageAnalyzeTimeoutSecond) * time.Second
+	taskConfig.MaxSimilarRequest = cfg.MaxSimilarRequest
+	taskConfig.EntranceRetry = cfg.EntranceRetry
+	taskConfig.Subdomain = cfg.Subdomain
 
 	// Filters.
 	taskConfig.NewTaskFilter = cfg.NewTaskFilterConfig

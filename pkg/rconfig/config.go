@@ -46,6 +46,8 @@ type FilterConfig struct {
 type Config struct {
 	ExecPath         string `yaml:"exec_path"`
 	DisableHeadless  bool   `yaml:"disable_headless"`
+	Subdomain        bool   `yaml:"subdomain"`
+	Leakless         bool   `yaml:"leakless"`
 	ForceSandbox     bool   `yaml:"force_sandbox"`
 	EnableImage      bool   `yaml:"enable_image"`
 	ParentPathDetect bool   `yaml:"parent_path_detect"`
@@ -65,6 +67,9 @@ type Config struct {
 	MaxPageVisit             int `yaml:"max_page_visit"`
 	MaxPageVisitPerSite      int `yaml:"max_page_visit_per_site"`
 	ElementFilterStrength    int `yaml:"element_filter_strength"`
+
+	EntranceRetry     int `yaml:"entrance_retry"`
+	MaxSimilarRequest int `yaml:"max_similar_request"`
 
 	NewTaskFilterConfig       FilterConfig `yaml:"new_task_filter_config"`
 	RequestSendFilterConfig   FilterConfig `yaml:"request_send_filter_config"`

@@ -69,6 +69,9 @@ type TabConfig struct {
 	MaxInteractive int
 	// Retry is the number of extra navigation attempts after a failure.
 	Retry int
+	// PageAnalyzeTimeout bounds how long a page may be analysed; 0 waits
+	// indefinitely.
+	PageAnalyzeTimeout time.Duration
 }
 
 type bindingCallPayload struct {

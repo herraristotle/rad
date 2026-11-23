@@ -7,6 +7,8 @@ const DefaultYAML = `# rad configuration file.
 
 exec_path: ""                     # path to the chrome executable
 disable_headless: false           # disable headless mode
+subdomain: true                   # crawl subdomains automatically
+leakless: true                    # experimental: guard against memory leaks (may hang)
 force_sandbox: false              # force sandbox on; false keeps the default (sandbox off in containers)
 enable_image: false               # load images
 parent_path_detect: true          # probe parent directories
@@ -54,6 +56,8 @@ request_send_filter_config:       # decide whether a request may be sent
   fragment_disallowed: []
   post_key_allowed: []
   post_key_disallowed: []
+entrance_retry: 0                 # retries for the entrance URL
+max_similar_request: 0            # max similar fetch/XHR requests (<=0 means unlimited)
 request_output_filter_config:     # decide whether a request may be reported
   hostname_allowed: []
   hostname_disallowed: []
