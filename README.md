@@ -41,7 +41,7 @@ make build_all
 
 1. rad relies only on the chrome environment to run, go to [download](https://www.chromium.org/getting-involved/download-chromium) for the new version of chromium.
 2. Build rad with `make build`; the binary lands in `./bin/rad`. Copy it to any directory. If you are on linux or macOS, please give rad **executable permissions (+x)**.
-3. Prebuilt binaries are published on this repository's [releases page](https://github.com/herraristotle/rad/releases); the binary is named `rad`. You can also build from source as above.
+3. Prebuilt binaries are published on this repository's [releases page](https://github.com/herraristotle/rad/releases). A release is created automatically when a `v*` tag is pushed. Assets are named `rad_<tag>_<os>_<arch>.tar.gz`, or `.zip` on Windows; extract one and the binary inside is `rad` (`rad.exe` on Windows). A `checksums.txt` with SHA-256 hashes is attached to each release — verify your download with `sha256sum -c checksums.txt`. You can also build from source as above.
 
 > If you are using a linux system and chrome prompts you with missing dependencies, please see TroubleShooting below
 
