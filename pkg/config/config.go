@@ -20,17 +20,17 @@ const (
 	// page_analyze_timeout_second. It mirrors chaitin/rad's default so an
 	// absent key behaves the same as the documented value.
 	DefaultPageAnalyzeTimeout = 300 * time.Second
-	TabRunTimeout             = 20 * time.Second
+	TabRunTimeout             = 10 * time.Second
 	DefaultInputText          = "Rad"
 	FormInputKeyword          = "Rad"
 	SuspectURLRegex           = `(?:"|')(((?:[a-zA-Z]{1,10}://|//)[^"'/]{1,}\.[a-zA-Z]{2,}[^"']{0,})|((?:/|\.\./|\./)[^"'><,;|*()(%%$^/\\\[\]][^"'><,;|()]{1,})|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{1,}\.(?:[a-zA-Z]{1,4}|action)(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{3,}(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-]{1,}\.(?:php|asp|aspx|jsp|json|action|html|js|txt|xml)(?:[\?|#][^"|']{0,}|)))(?:"|')`
 	URLRegex                  = `((https?|ftp|file):)?//[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]`
 	AttrURLRegex              = ``
-	DomContentLoadedTimeout   = 5 * time.Second
+	DomContentLoadedTimeout   = 10 * time.Second
 	EventTriggerInterval      = 100 * time.Millisecond
 	BeforeExitDelay           = 1 * time.Second
 	DefaultEventTriggerMode   = EventTriggerAsync
-	MaxCrawlCount             = 200
+	MaxCrawlCount             = 1000
 	MaxRunTime                = 60 * 60
 )
 

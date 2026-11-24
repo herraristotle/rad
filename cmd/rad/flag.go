@@ -125,7 +125,7 @@ func SetMaxTabCount() *cli.IntFlag {
 	return &cli.IntFlag{
 		Name:        "max-tab-count",
 		Aliases:     []string{"tab"},
-		Value:       8,
+		Value:       config.MaxTabsCount,
 		Usage:       "maximum `Number` of tabs allowed.",
 		Destination: &taskConfig.MaxTabsCount,
 	}
