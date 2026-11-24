@@ -81,6 +81,7 @@ jobs:
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
       GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
     steps:
       - name: Download archives
         uses: actions/download-artifact@v4
@@ -93,6 +94,13 @@ jobs:
           cd dist
           sha256sum rad_* > checksums.txt
           cat checksums.txt
+
+      - name: Validate tag
+        run: |
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9][0-9A-Za-z._-]*$'; then
+            echo "::error::Refusing to publish: TAG='$TAG' is not a version tag (expected v<major>...)."
+            exit 1
+          fi
 
       - name: Create release if missing
         run: gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --generate-notes
