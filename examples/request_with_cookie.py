@@ -4,12 +4,13 @@
 import simplejson
 import subprocess
 """
-    添加Cookie扫描示例
-    
-    命令行调用时：
-    ./rad -c /home/test/chrome-linux/chrome -o json --ignore-url-keywords quit,exit,zhuxiao,logout --custom-headers "{\"Cookie\": \"rad=Cool\"}"
+    Example: crawling with a Cookie.
 
-    使用 --ignore-url-keywords 添加你想要的排除的关键字，避免访问注销请求
+    From the command line:
+    ./rad --chrome /home/test/chrome-linux/chrome -o json --ignore-url-keywords quit,exit,logout --custom-headers "{\"Cookie\": \"rad=Cool\"}"
+
+    Use --ignore-url-keywords to exclude keywords such as logout links so the
+    crawl never hits them.
 """
 
 
@@ -20,9 +21,9 @@ def main():
                       "Chrome/74.0.3945.0 Safari/537.36",
         "Cookie": "rad=Cool"
     }
-    cmd = ["./rad", "-c", "/home/test/chrome-linux/chrome",
-           "-o", "json", "--ignore-url-keywords", "quit,exit,zhuxiao,logout", "--custom-headers", simplejson.dumps(headers),
-           target]
+    cmd = ["./rad", "--chrome", "/home/test/chrome-linux/chrome",
+           "-o", "json", "--ignore-url-keywords", "quit,exit,logout", "--custom-headers", simplejson.dumps(headers),
+           "-t", target]
 
     rsp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = rsp.communicate()

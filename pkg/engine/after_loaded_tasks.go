@@ -14,16 +14,16 @@ import (
 )
 
 /**
-根据NODE节点执行JS的代码
+Executes JS against a DOM node.
 err := EvaluateAsDevTools(snippet(submitJS, cashX(true), sel, nodes[0]), &res).Do(ctx)
 
-具体环境实现在 chromedp.submit 函数中 参考即可写出
+See chromedp's submit implementation for the same pattern.
 */
 
 /*
 *
-在页面Loaded之后执行
-同时等待 afterDOMRun 之后执行
+Runs after the page has loaded.
+Also waits for afterDOMRun to complete.
 */
 func (tab *Tab) AfterLoadedRun() {
 	defer tab.WG.Done()
@@ -49,7 +49,7 @@ func (tab *Tab) AfterLoadedRun() {
 		tab.triggerJavascriptProtocol()
 	}
 
-	// 事件触发之后 需要等待一点时间让浏览器成功发出ajax请求 更新DOM
+	// After triggering an event, wait briefly so the browser can send the XHR and update the DOM.
 	time.Sleep(tab.config.BeforeExitDelay)
 
 	go tab.RemoveDOMListener()
@@ -78,30 +78,30 @@ func (tab *Tab) waitForAnalysis() {
 
 /*
 *
-自动化点击提交表单
+formSubmit submits forms automatically.
 */
 func (tab *Tab) formSubmit() {
 
 	logger.Logger.Debug("formSubmit start")
 
-	// 首先对form表单设置target
+	// First point the form at a target.
 	tab.setFormToFrame()
 
-	// 接下来尝试三种方式提交表单
+	// Then try three ways of submitting the form.
 	go tab.clickSubmit()
 	go tab.clickAllButton()
 }
 
 /*
 *
-设置form的target指向一个frame
+setFormTarget points the form at a frame.
 */
 func (tab *Tab) setFormToFrame() {
-	// 首先新建 frame
+	// Create the frame first.
 	nameStr := tools.RandSeq(8)
 	tab.Evaluate(fmt.Sprintf(js.NewFrameTemplate, nameStr, nameStr))
 
-	// 接下来将所有的 form 节点target都指向它
+	// Then point every form node at it.
 	ctx := tab.GetExecutor()
 	formNodes, formErr := tab.GetNodeIDs(`form`)
 	if formErr != nil || len(formNodes) == 0 {
@@ -118,15 +118,15 @@ func (tab *Tab) setFormToFrame() {
 
 /*
 *
-点击按钮 type=submit
+clickSubmitButton clicks a button with type=submit.
 */
 func (tab *Tab) clickSubmit() {
 	defer tab.formSubmitWG.Done()
 
-	// 首先点击按钮 type=submit
+	// First click the button with type=submit.
 	ctx := tab.GetExecutor()
 
-	// 获取所有的form节点 直接执行submit
+	// Otherwise get every form node and submit it directly.
 	formNodes, formErr := tab.GetNodeIDs(`form`)
 	if formErr != nil || len(formNodes) == 0 {
 		logger.Logger.Debug("clickSubmit: get form element err")
@@ -139,7 +139,7 @@ func (tab *Tab) clickSubmit() {
 	defer cancel1()
 	_ = chromedp.Submit(formNodes, chromedp.ByNodeID).Do(tCtx1)
 
-	// 获取所有的input标签
+	// Get every input element.
 	inputNodes, inputErr := tab.GetNodeIDs(`form input[type=submit]`)
 	if inputErr != nil || len(inputNodes) == 0 {
 		logger.Logger.Debug("clickSubmit: get form input element err")
@@ -160,9 +160,9 @@ click all button
 func (tab *Tab) clickAllButton() {
 	defer tab.formSubmitWG.Done()
 
-	// 获取所有的form中的button节点
+	// Get button nodes inside forms.
 	ctx := tab.GetExecutor()
-	// 获取所有的button标签
+	// Get every button element.
 	btnNodeIDs, bErr := tab.GetNodeIDs(`form button`)
 	if bErr != nil || len(btnNodeIDs) == 0 {
 		logger.Logger.Debug("clickAllButton: get form button element err")
@@ -175,7 +175,7 @@ func (tab *Tab) clickAllButton() {
 	defer cancel1()
 	_ = chromedp.Click(btnNodeIDs, chromedp.ByNodeID).Do(tCtx)
 
-	// 使用JS的click方法进行点击
+	// Click using JS.
 	var btnNodes []*cdp.Node
 	tCtx2, cancel2 := context.WithTimeout(ctx, time.Second*2)
 	defer cancel2()
@@ -190,7 +190,7 @@ func (tab *Tab) clickAllButton() {
 
 /*
 *
-触发内联事件
+triggerInlineEvent fires an inline event.
 */
 func (tab *Tab) triggerInlineEvents() {
 	defer tab.loadedWG.Done()
@@ -201,7 +201,7 @@ func (tab *Tab) triggerInlineEvents() {
 
 /*
 *
-触发DOM2级事件
+triggerDOM2Event fires a DOM level 2 event.
 */
 func (tab *Tab) triggerDom2Events() {
 	defer tab.loadedWG.Done()
@@ -212,7 +212,7 @@ func (tab *Tab) triggerDom2Events() {
 
 /*
 *
-a标签的href值为伪协议，
+Returns true when an anchor's href uses a pseudo-protocol,
 */
 func (tab *Tab) triggerJavascriptProtocol() {
 	defer tab.loadedWG.Done()
@@ -224,12 +224,12 @@ func (tab *Tab) triggerJavascriptProtocol() {
 
 /*
 *
-移除DOM节点变化监听
+RemoveDOMListener stops watching DOM mutations.
 */
 func (tab *Tab) RemoveDOMListener() {
 	defer tab.removeLis.Done()
 	logger.Logger.Debug("RemoveDOMListener start")
-	// 移除DOM节点变化监听
+	// Remove the DOM mutation listener.
 	tab.Evaluate(js.RemoveDOMListenerJS)
 	logger.Logger.Debug("RemoveDOMListener end")
 }

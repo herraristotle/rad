@@ -27,14 +27,14 @@ const (
 	URLRegex                  = `((https?|ftp|file):)?//[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]`
 	AttrURLRegex              = ``
 	DomContentLoadedTimeout   = 5 * time.Second
-	EventTriggerInterval      = 100 * time.Millisecond // 单位毫秒
+	EventTriggerInterval      = 100 * time.Millisecond
 	BeforeExitDelay           = 1 * time.Second
 	DefaultEventTriggerMode   = EventTriggerAsync
 	MaxCrawlCount             = 200
 	MaxRunTime                = 60 * 60
 )
 
-// 请求方法
+// Request methods.
 const (
 	GET     = "GET"
 	POST    = "POST"
@@ -44,29 +44,29 @@ const (
 	OPTIONS = "OPTIONS"
 )
 
-// 过滤模式
+// Filter modes.
 const (
 	SimpleFilterMode = "simple"
 	SmartFilterMode  = "smart"
 	StrictFilterMode = "strict"
 )
 
-// 事件触发模式
+// Event trigger modes.
 const (
 	EventTriggerAsync = "async"
 	EventTriggerSync  = "sync"
 )
 
-// 请求的来源
+// Where a request came from.
 const (
-	FromTarget      = "Target"     //初始输入的目标
-	FromNavigation  = "Navigation" //页面导航请求
-	FromXHR         = "XHR"        //ajax异步请求
-	FromDOM         = "DOM"        //dom解析出来的请求
-	FromJSFile      = "JavaScript" //JS脚本中解析
-	FromFuzz        = "PathFuzz"   //初始path fuzz
+	FromTarget      = "Target"     // initial input target
+	FromNavigation  = "Navigation" // page navigation
+	FromXHR         = "XHR"        // asynchronous XHR request
+	FromDOM         = "DOM"        // extracted from the DOM
+	FromJSFile      = "JavaScript" // extracted from JavaScript
+	FromFuzz        = "PathFuzz"   // initial path fuzzing
 	FromRobots      = "robots.txt" //robots.txt
-	FromComment     = "Comment"    //页面中的注释
+	FromComment     = "Comment"    // found in page comments
 	FromWebSocket   = "WebSocket"
 	FromEventSource = "EventSource"
 	FromFetch       = "Fetch"

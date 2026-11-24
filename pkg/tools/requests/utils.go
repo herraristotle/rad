@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// UrlParse 调用url.Parse，增加了对%的处理
+// UrlParse wraps url.Parse, handling literal % characters.
 func UrlParse(sourceUrl string) (*url.URL, error) {
 	u, err := url.Parse(sourceUrl)
 	if err != nil {
@@ -18,7 +18,7 @@ func UrlParse(sourceUrl string) (*url.URL, error) {
 	return u, nil
 }
 
-// escapePercentSign 把url中的%替换为%25
+// escapePercentSign replaces % with %25.
 func escapePercentSign(raw string) string {
 	return strings.ReplaceAll(raw, "%", "%25")
 }

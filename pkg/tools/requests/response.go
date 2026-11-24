@@ -7,7 +7,7 @@ import (
 	"github.com/herraristotle/rad/pkg/logger"
 )
 
-// 自定义一些函数
+// Custom helpers.
 type Response struct {
 	http.Response
 	// raw text Response
@@ -15,7 +15,7 @@ type Response struct {
 }
 
 func getTextFromResp(r *http.Response) string {
-	// TODO: 编码转换
+	// TODO: charset conversion.
 	if r.ContentLength == 0 {
 		return ""
 	}

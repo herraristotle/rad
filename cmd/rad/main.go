@@ -26,9 +26,9 @@ import (
 )
 
 /**
-命令行调用适配器
+Command-line entry point.
 
-用于生成开源的二进制程序
+Builds the open-source binary.
 */
 
 type Result struct {
@@ -136,7 +136,7 @@ func run(c *cli.Context) error {
 		return errors.New("url must be set")
 	}
 
-	// 设置日志输出级别
+	// Set the log level.
 	level, err := logrus.ParseLevel(logLevel)
 	if err != nil {
 		logger.Logger.Fatal(err)
@@ -190,7 +190,7 @@ func run(c *cli.Context) error {
 		logger.Logger.Fatal("no validate target.")
 	}
 
-	// 检查自定义的表单参数配置
+	// Check the custom form value configuration.
 	taskConfig.CustomFormValues, err = parseCustomFormValues(customFormTypeValues.Value())
 	if err != nil {
 		logger.Logger.Fatal(err)
@@ -200,7 +200,7 @@ func run(c *cli.Context) error {
 		logger.Logger.Fatal(err)
 	}
 
-	// 开始爬虫任务
+	// Start the crawl.
 	task, err := pkg.NewCrawlerTask(crawlTargets, taskConfig)
 	if err != nil {
 		logger.Logger.Error("create crawler task failed.")
@@ -214,11 +214,11 @@ func run(c *cli.Context) error {
 		logger.Logger.Info("filter mode: ", taskConfig.FilterMode)
 	}
 
-	// 提示自定义表单填充参数
+	// Report the custom form values.
 	if len(taskConfig.CustomFormValues) > 0 {
 		logger.Logger.Info("Custom form values, " + tools.MapStringFormat(taskConfig.CustomFormValues))
 	}
-	// 提示自定义表单填充参数
+	// Report the custom form fill values.
 	if len(taskConfig.CustomFormKeywordValues) > 0 {
 		logger.Logger.Info("Custom form keyword values, " + tools.MapStringFormat(taskConfig.CustomFormKeywordValues))
 	}
@@ -239,13 +239,13 @@ func run(c *cli.Context) error {
 	logger.Logger.Infof("Task finished, %d results, %d requests, %d subdomains, %d domains found, runtime: %d",
 		len(result.ReqList), len(result.AllReqList), len(result.SubDomainList), len(result.AllDomainList), time.Now().Unix()-task.Start.Unix())
 
-	// 内置请求代理
+	// Built-in request pusher.
 	if pushAddress != "" {
 		logger.Logger.Info("pushing results to ", pushAddress, ", max pool number:", pushProxyPoolMax)
 		Push2Proxy(result.ReqList)
 	}
 
-	// 输出结果
+	// Write the result.
 	outputResult(result)
 	if err := applyOutputs(result); err != nil {
 		return err
@@ -302,7 +302,7 @@ func keywordStringToMap(data []string) (map[string]string, error) {
 }
 
 func outputResult(result *pkg.Result) {
-	// 输出结果
+	// Write the result.
 	if outputMode == "json" {
 		fmt.Println("--[Mission Complete]--")
 		resBytes := getJsonSerialize(result)
@@ -320,7 +320,7 @@ func outputResult(result *pkg.Result) {
 
 /*
 *
-原生被动代理推送支持
+Push2Proxy provides native passive-proxy pushing.
 */
 func Push2Proxy(reqList []*model2.Request) {
 	pool, _ := ants.NewPool(pushProxyPoolMax)
@@ -344,7 +344,7 @@ func Push2Proxy(reqList []*model2.Request) {
 
 /*
 *
-协程池请求的任务
+doRequest is the task submitted to the worker pool.
 */
 func (p *ProxyTask) doRequest() {
 	defer pushProxyWG.Done()
@@ -415,8 +415,7 @@ func readUrlFile(path string) ([]string, error) {
 // waitForLogin blocks until the user presses Enter, matching chaitin/rad's
 // -wait-login flow.
 func waitForLogin() {
-	fmt.Println("您可以在浏览器执行登录操作，登录完成后，按回车继续爬取")
-	fmt.Println("You can try to login and press any key to continue")
+	fmt.Println("You can log in using the browser, then press Enter to continue crawling.")
 	reader := bufio.NewReader(os.Stdin)
 	_, _ = reader.ReadString('\n')
 }

@@ -16,15 +16,15 @@ var (
 	// }
 
 	fragmentUrls = []string{
-		// 基准组
+		// Baseline group.
 		"http://testhtml5.vuwm.com/latest#/page/1",
 		"http://testhtml5.vuwm.com/latest#/page/search?keyword=Rad&source=2&demo=1423&c=afa",
-		// 被标记成 {{long}}
+		// Marked as {{long}}.
 		"http://testhtml5.vuwm.com/latest#/page/search/fasdfsdafsdfsdfsdfasfsfasfafdsafssfasdfsd",
 
-		// 对照组
+		// Control group.
 		"http://testhtml5.vuwm.com/latest#/page/2",
-		// 同类型：只有数值型参数不同，不应被标记成 {{long}}
+		// Same shape: only numeric parameters differ, so they must not be marked {{long}}.
 		"http://testhtml5.vuwm.com/latest#/page/search?keyword=Rad&source=1&demo=1255&c=afa",
 	}
 
@@ -41,15 +41,15 @@ func TestDoFilter_countFragment(t *testing.T) {
 		assert.Nil(t, err)
 		reqs = append(reqs, model.GetRequest(config.GET, url))
 	}
-	// #/page/1 和 #/page/2 是同一种类型
+	// #/page/1 and #/page/2 share one shape.
 	assert.Equal(t, smart.calcFragmentID(reqs[0].URL.Fragment), smart.calcFragmentID(reqs[3].URL.Fragment))
 	assert.Equal(t, smart.calcFragmentID(reqs[1].URL.Fragment), smart.calcFragmentID(reqs[4].URL.Fragment))
 	for _, rq := range reqs[:2] {
-		// 第一次出现都不应该过滤
+		// The first occurrence must not be filtered.
 		assert.Equal(t, smart.DoFilter(&rq), false)
 	}
 	for _, rq := range reqs[3:] {
-		// 同类型出现第二次，应该被过滤
+		// The second occurrence of the same shape must be filtered.
 		assert.Equal(t, smart.DoFilter(&rq), true)
 	}
 }

@@ -20,7 +20,7 @@ var (
 		{"www.pku.edu.cn", "pku.edu.cn", true},
 		{"www.example1.debian.org", "debian.org", true},
 		{"www.golang.dev", "golang.dev", true},
-		// 以下都是一些特殊的 case，主要包括一些特殊的域名和私有域名，一般情况遇不到
+		// These are unusual cases: special and private domains rarely seen in practice.
 		// error domains
 		{"com.cn", "", true},
 		// not an icann domain

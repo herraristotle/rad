@@ -4,15 +4,15 @@
 import simplejson
 import subprocess
 """
-    628235 版本的chrome可用
+    chrome build 628235 works.
 
-    为什么高版本无法Host绑定？
+    Why host binding fails on newer builds:
     https://github.com/chromium/chromium/commit/d31383577e0517843c8059dec9b87469bf30900f#diff-d717572478f6a97f889b33917c9d3a5f
 
-    查找历史版本
+    Find older builds:
     https://github.com/macchrome/winchrome/releases?after=v77.0.3865.90-r681094-Win64
 
-    下载地址
+    Download:
     https://storage.googleapis.com/chromium-browser-snapshots/Linux_x64/628235/chrome-linux.zip
 """
 
@@ -24,8 +24,8 @@ def main():
         "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
                       "Chrome/74.0.3945.0 Safari/537.36",
     }
-    cmd = ["./rad", "-c", "/tmp/chrome-linux-628235/chrome",
-           "-o", "json", "--custom-headers", simplejson.dumps(headers), target]
+    cmd = ["./rad", "--chrome", "/tmp/chrome-linux-628235/chrome",
+           "-o", "json", "--custom-headers", simplejson.dumps(headers), "-t", target]
     rsp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = rsp.communicate()
 

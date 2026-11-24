@@ -49,16 +49,16 @@ func InitBrowserWithOptions(o BrowserOptions) *Browser {
 	var bro Browser
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 
-		// 无头模式
+		// Headless mode.
 		chromedp.Flag("headless", !o.NoHeadless),
 		// https://github.com/chromedp/chromedp/issues/997#issuecomment-1030596050
 		// incognito mode not used
-		// 禁用GPU，不显示GUI
+		// Disable the GPU and show no GUI.
 		chromedp.Flag("disable-gpu", true),
 		// Sandbox: keep it off by default (required in most containers), but
 		// honour force_sandbox from the config.
 		chromedp.Flag("no-sandbox", !o.ForceSandbox),
-		// 忽略证书错误
+		// Ignore certificate errors.
 		chromedp.Flag("ignore-certificate-errors", true),
 
 		chromedp.Flag("disable-images", !o.EnableImage),
@@ -77,14 +77,14 @@ func InitBrowserWithOptions(o BrowserOptions) *Browser {
 
 		chromedp.WindowSize(1920, 1080),
 	)
-	// 设置浏览器代理
+	// Set the browser proxy.
 	if o.Proxy != "" {
 		opts = append(opts, chromedp.ProxyServer(o.Proxy))
 	}
 
 	if len(o.ChromiumPath) > 0 {
 
-		// 指定执行路径
+		// Use an explicit executable path.
 		opts = append(opts, chromedp.ExecPath(o.ChromiumPath))
 	}
 
@@ -99,7 +99,7 @@ func InitBrowserWithOptions(o BrowserOptions) *Browser {
 		chromedp.WithLogf(log.Printf),
 	)
 	// https://github.com/chromedp/chromedp/issues/824#issuecomment-845664441
-	// 如果需要在一个浏览器上创建多个tab，则需要先创建浏览器的上下文，即运行下面的语句
+	// Creating several tabs on one browser requires the browser context first, which the call below establishes.
 	err := chromedp.Run(bctx)
 	if err != nil {
 		// not found chrome process need exit

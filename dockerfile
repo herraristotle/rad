@@ -23,4 +23,4 @@ RUN apt-get update && apt-get install -yq --no-install-recommends \
      libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 libnss3 \
      && rm -rf /var/lib/apt/lists/*
 
-ENTRYPOINT ["/rad", "-c", "/chrome/chrome"]
+ENTRYPOINT ["/rad", "--chrome", "/chrome/chrome"]

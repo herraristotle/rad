@@ -7,30 +7,30 @@ import (
 )
 
 type TaskConfig struct {
-	MaxCrawlCount           int    // 最大爬取的数量
+	MaxCrawlCount           int    // maximum number of pages to crawl
 	FilterMode              string // simple、smart、strict
 	ExtraHeaders            map[string]interface{}
 	ExtraHeadersString      string
-	AllDomainReturn         bool // 全部域名收集
-	SubDomainReturn         bool // 子域名收集
-	NoHeadless              bool // headless模式
+	AllDomainReturn         bool // collect all domains
+	SubDomainReturn         bool // collect subdomains
+	NoHeadless              bool // disable headless mode
 	DomContentLoadedTimeout time.Duration
-	TabRunTimeout           time.Duration     // 单个标签页超时
-	PathByFuzz              bool              // 通过字典进行Path Fuzz
-	FuzzDictPath            string            //Fuzz目录字典
-	PathFromRobots          bool              // 解析Robots文件找出路径
-	MaxTabsCount            int               // 允许开启的最大标签页数量 即同时爬取的数量
-	ChromiumPath            string            // Chromium的程序路径  `/home/zhusiyu1/chrome-linux/chrome`
+	TabRunTimeout           time.Duration     // per-tab timeout
+	PathByFuzz              bool              // fuzz paths using the built-in wordlist
+	FuzzDictPath            string            // path to a directory wordlist for fuzzing
+	PathFromRobots          bool              // derive paths from robots.txt
+	MaxTabsCount            int               // maximum tabs, i.e. concurrent crawls
+	ChromiumPath            string            // path to the Chromium executable
 	ChromiumWSUrl           string            // Websocket debugging URL for a running chrome session
-	EventTriggerMode        string            // 事件触发的调用方式： 异步 或 顺序
-	EventTriggerInterval    time.Duration     // 事件触发的间隔
-	BeforeExitDelay         time.Duration     // 退出前的等待时间，等待DOM渲染，等待XHR发出捕获
-	EncodeURLWithCharset    bool              // 使用检测到的字符集自动编码URL
-	IgnoreKeywords          []string          // 忽略的关键字，匹配上之后将不再扫描且不发送请求
-	Proxy                   string            // 请求代理
-	CustomFormValues        map[string]string // 自定义表单填充参数
-	CustomFormKeywordValues map[string]string // 自定义表单关键词填充内容
-	MaxRunTime              int64             // 最大爬取时间(单位秒），超时则结束任务，平滑结束（比如某个url还未处理完不能结束，需要一次req完成后才可以结束整个任务）
+	EventTriggerMode        string            // how events are triggered: async or sequential
+	EventTriggerInterval    time.Duration     // interval between event triggers
+	BeforeExitDelay         time.Duration     // grace period before exit, letting the DOM render and XHR fire
+	EncodeURLWithCharset    bool              // encode URLs using the detected charset
+	IgnoreKeywords          []string          // keywords that stop a URL from being scanned or requested
+	Proxy                   string            // request proxy
+	CustomFormValues        map[string]string // custom form fill values
+	CustomFormKeywordValues map[string]string // custom form fill values keyed by keyword
+	MaxRunTime              int64             // maximum crawl time in seconds; the task ends gracefully once in-flight requests finish
 
 	// Loaded from rad_config.yml when -config is supplied.
 	ConfigFile            string                 // path of the config file, empty when unused

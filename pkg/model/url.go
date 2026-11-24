@@ -18,7 +18,7 @@ type URL struct {
 }
 
 func GetUrl(_url string, parentUrls ...URL) (*URL, error) {
-	// 补充解析URL为完整格式
+	// ParseURL completes a URL into its full form.
 	var u URL
 	_url, err := u.parse(_url, parentUrls...)
 	if err != nil {
@@ -58,7 +58,7 @@ func GetUrl(_url string, parentUrls ...URL) (*URL, error) {
 
 /*
 *
-修复不完整的URL
+FixURL repairs an incomplete URL.
 */
 func (u *URL) parse(_url string, parentUrls ...URL) (string, error) {
 	_url = strings.Trim(_url, " ")
@@ -66,12 +66,12 @@ func (u *URL) parse(_url string, parentUrls ...URL) (string, error) {
 	if len(_url) == 0 {
 		return "", errors.New("invalid url, length 0")
 	}
-	// 替换掉多余的#
+	// Drop redundant '#' characters.
 	if strings.Count(_url, "#") > 1 {
 		_url = regexp.MustCompile(`#+`).ReplaceAllString(_url, "#")
 	}
 
-	// 没有父链接，直接退出
+	// No parent link, so stop here.
 	if len(parentUrls) == 0 {
 		return _url, nil
 	}
@@ -100,7 +100,7 @@ func (u *URL) QueryMap() map[string]interface{} {
 
 /*
 *
-返回去掉请求参数的URL
+NoQuery returns the URL without its query string.
 */
 func (u *URL) NoQueryUrl() string {
 	return fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, u.Path)
@@ -108,7 +108,7 @@ func (u *URL) NoQueryUrl() string {
 
 /*
 *
-返回不带Fragment的URL
+NoFragment returns the URL without its fragment.
 */
 func (u *URL) NoFragmentUrl() string {
 	return strings.Replace(u.String(), u.Fragment, "", -1)
@@ -124,19 +124,19 @@ func (u *URL) NavigationUrl() string {
 
 /*
 *
-返回根域名
+RootDomain returns the root domain.
 
-如 a.b.c.360.cn 返回 360.cn
+For example a.b.c.example.com returns example.com.
 */
 func (u *URL) RootDomain() string {
 	domain := u.Hostname()
 	suffix, icann := publicsuffix.PublicSuffix(strings.ToLower(domain))
-	// 如果不是 icann 的域名，返回空字符串
+	// Not an ICANN domain, so return an empty string.
 	if !icann {
 		return ""
 	}
 	i := len(domain) - len(suffix) - 1
-	// 如果域名错误
+	// Malformed domain.
 	if i <= 0 {
 		return ""
 	}
@@ -148,7 +148,7 @@ func (u *URL) RootDomain() string {
 
 /*
 *
-文件扩展名
+FileExtension returns the file extension.
 */
 func (u *URL) FileName() string {
 	parts := strings.Split(u.Path, `/`)
@@ -162,11 +162,11 @@ func (u *URL) FileName() string {
 
 /*
 *
-文件扩展名
+FileExtension returns the file extension.
 */
 func (u *URL) FileExt() string {
 	parts := path.Ext(u.Path)
-	// 第一个字符会带有 "."
+	// The first character is a '.'.
 	if len(parts) > 0 {
 		return strings.ToLower(parts[1:])
 	}
@@ -175,7 +175,7 @@ func (u *URL) FileExt() string {
 
 /*
 *
-回去上一级path, 如果当前就是root path，则返回空字符串
+ParentPath returns the parent path, or an empty string at the root.
 */
 func (u *URL) ParentPath() string {
 	if u.Path == "/" {

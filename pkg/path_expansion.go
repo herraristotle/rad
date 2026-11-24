@@ -41,7 +41,7 @@ var validateUrl mapset.Set
 
 /*
 *
-从robots.txt文件中获取路径信息
+GetPathsFromRobots reads paths from robots.txt.
 */
 func GetPathsFromRobots(navReq model2.Request) []*model2.Request {
 	logger.Logger.Info("starting to get paths from robots.txt.")
@@ -82,7 +82,7 @@ func GetPathsFromRobots(navReq model2.Request) []*model2.Request {
 
 /*
 *
-使用常见路径列表进行fuzz
+GetPathsByFuzz fuzzes using a built-in list of common paths.
 */
 func GetPathsByFuzz(navReq model2.Request) []*model2.Request {
 	logger.Logger.Info("starting to get paths by fuzzing.")
@@ -92,7 +92,7 @@ func GetPathsByFuzz(navReq model2.Request) []*model2.Request {
 
 /*
 *
-使用字典列表进行fuzz
+GetPathsByFuzzDict fuzzes using a supplied wordlist.
 */
 func GetPathsByFuzzDict(navReq model2.Request, dictPath string) []*model2.Request {
 	logger.Logger.Infof("starting to get dict path by fuzzing: %s", dictPath)

@@ -15,14 +15,14 @@ import (
 
 /*
 *
-在DOMContentLoaded完成后执行
+Runs after DOMContentLoaded.
 */
 func (tab *Tab) AfterDOMRun() {
 	defer tab.WG.Done()
 
 	logger.Logger.Debug("afterDOMRun start")
 
-	// 获取当前body节点的nodeId 用于之后查找子节点
+	// Get the body node ID so child nodes can be looked up later.
 	if !tab.getBodyNodeId() {
 		logger.Logger.Debug("no body document NodeID, exit.")
 		return
@@ -39,15 +39,15 @@ func (tab *Tab) AfterDOMRun() {
 
 /*
 *
-获取的Body的NodeId 用于之后子节点无等待查询
-最多等待3秒 如果DOM依旧没有渲染完成，则退出
+getBodyNodeID returns the body node ID for non-blocking child lookups.
+Wait at most 3 seconds; give up if the DOM is still not rendered.
 */
 func (tab *Tab) getBodyNodeId() bool {
 	var docNodeIDs []cdp.NodeID
 	ctx := tab.GetExecutor()
 	tCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
-	// 获取 Frame document root
+	// Get the frame document root.
 	err := chromedp.NodeIDs(`body`, &docNodeIDs, chromedp.ByQuery).Do(tCtx)
 	if len(docNodeIDs) == 0 || err != nil {
 		// not root node yet?
@@ -63,7 +63,7 @@ func (tab *Tab) getBodyNodeId() bool {
 
 /*
 *
-自动化填充表单
+fillForm fills forms automatically.
 */
 func (tab *Tab) fillForm() {
 	defer tab.domWG.Done()
@@ -83,12 +83,12 @@ func (tab *Tab) fillForm() {
 
 /*
 *
-设置Dom节点变化的观察函数
+setObserverJS installs a DOM mutation observer.
 */
 func (tab *Tab) setObserverJS() {
 	defer tab.domWG.Done()
 	logger.Logger.Debug("setObserverJS start")
-	// 设置Dom节点变化的观察函数
+	// Install a DOM mutation observer.
 	go tab.Evaluate(js.ObserverJS)
 	logger.Logger.Debug("setObserverJS end")
 }
@@ -99,7 +99,7 @@ type FillForm struct {
 
 /*
 *
-填充所有 input 标签
+fillInput fills every input element.
 */
 func (f *FillForm) fillInput() {
 	defer f.tab.fillFormWG.Done()
@@ -108,7 +108,7 @@ func (f *FillForm) fillInput() {
 
 	tCtx, cancel := context.WithTimeout(ctx, time.Second*2)
 	defer cancel()
-	// 首先判断input标签是否存在，减少等待时间 提前退出
+	// Check whether any input exists first, to exit early and avoid waiting.
 	inputNodes, inputErr := f.tab.GetNodeIDs(`input`)
 	if inputErr != nil || len(inputNodes) == 0 {
 		logger.Logger.Debug("fillInput: get form input element err")
@@ -117,7 +117,7 @@ func (f *FillForm) fillInput() {
 		}
 		return
 	}
-	// 获取所有的input标签
+	// Get every input element.
 	err := chromedp.Nodes(`input`, &nodes, chromedp.ByQueryAll).Do(tCtx)
 
 	if err != nil {
@@ -126,25 +126,25 @@ func (f *FillForm) fillInput() {
 		return
 	}
 
-	// 找出 type 为空 或者 type=text
+	// Pick inputs with an empty type or type=text.
 	for _, node := range nodes {
-		// 兜底超时
+		// Fallback timeout.
 		tCtxN, cancelN := context.WithTimeout(ctx, time.Second*5)
 		attrType := node.AttributeValue("type")
 		if attrType == "text" || attrType == "" {
 			inputName := node.AttributeValue("id") + node.AttributeValue("class") + node.AttributeValue("name")
 			value := f.GetMatchInputText(inputName)
 			var nodeIds = []cdp.NodeID{node.NodeID}
-			// 先使用模拟输入
+			// Try simulated input first.
 			_ = chromedp.SendKeys(nodeIds, value, chromedp.ByNodeID).Do(tCtxN)
-			// 再直接赋值JS属性
+			// Then assign the JS property directly.
 			_ = chromedp.SetAttributeValue(nodeIds, "value", value, chromedp.ByNodeID).Do(tCtxN)
 		} else if attrType == "email" || attrType == "password" || attrType == "tel" {
 			value := f.GetMatchInputText(attrType)
 			var nodeIds = []cdp.NodeID{node.NodeID}
-			// 先使用模拟输入
+			// Try simulated input first.
 			_ = chromedp.SendKeys(nodeIds, value, chromedp.ByNodeID).Do(tCtxN)
-			// 再直接赋值JS属性
+			// Then assign the JS property directly.
 			_ = chromedp.SetAttributeValue(nodeIds, "value", value, chromedp.ByNodeID).Do(tCtxN)
 		} else if attrType == "radio" || attrType == "checkbox" {
 			var nodeIds = []cdp.NodeID{node.NodeID}
@@ -198,7 +198,7 @@ func (f *FillForm) fillMultiSelect() {
 }
 
 func (f *FillForm) GetMatchInputText(name string) string {
-	// 如果自定义了关键词，模糊匹配
+	// Fuzzy-match when a custom keyword is set.
 	for key, value := range f.tab.config.CustomFormKeywordValues {
 		if strings.Contains(name, key) {
 			return value

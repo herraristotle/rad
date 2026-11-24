@@ -40,7 +40,7 @@ const TabInitJS = `
         get: () => "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.0 Safari/537.36",
     });
 
-	// 修改浏览器对象的属性
+	// Patch the browser object's properties.
 	Object.defineProperty(navigator, 'platform', {
 		get: function () { return 'win32'; }
 	});
@@ -62,7 +62,7 @@ const TabInitJS = `
 	}
 	Object.defineProperty(window.history,"pushState",{"writable": false, "configurable": false});
 	Object.defineProperty(window.history,"replaceState",{"writable": false, "configurable": false});
-	// 监听hash改变
+	// Watch for hash changes.
 	window.addEventListener("hashchange", function() {
 		window.addLink(document.location.href, "HashChange");
 	});
@@ -85,18 +85,18 @@ const TabInitJS = `
 		return oldFetch(url);
 	}
 	
-	// 锁定表单重置
+	// Lock form resets.
 	HTMLFormElement.prototype.reset = function() {console.log("cancel reset form")};
 	Object.defineProperty(HTMLFormElement.prototype,"reset",{"writable": false, "configurable": false});
 	
-	// hook dom2 级事件监听
+	// Hook DOM level 2 event listeners.
 	window.add_even_listener_count_sec_auto = {};
 	// record event func , hook addEventListener
 	let old_event_handle = Element.prototype.addEventListener;
 	Element.prototype.addEventListener = function(event_name, event_func, useCapture) {
 		let name = "<" + this.tagName + "> " + this.id + this.name + this.getAttribute("class") + "|" + event_name;
 		// console.log(name)
-		// 对每个事件设定最大的添加次数，防止无限触发，最大次数为5
+		// Cap how often each event may be added so it cannot fire endlessly; the limit is 5.
 		if (!window.add_even_listener_count_sec_auto.hasOwnProperty(name)) {
 			window.add_even_listener_count_sec_auto[name] = 1;
 		} else if (window.add_even_listener_count_sec_auto[name] == 5) {
@@ -116,7 +116,7 @@ const TabInitJS = `
 	function dom0_listener_hook(that, event_name) {
 		let name = "<" + that.tagName + "> " + that.id + that.name + that.getAttribute("class") + "|" + event_name;
 		// console.log(name);
-		// 对每个事件设定最大的添加次数，防止无限触发，最大次数为5
+		// Cap how often each event may be added so it cannot fire endlessly; the limit is 5.
 		if (!window.add_even_listener_count_sec_auto.hasOwnProperty(name)) {
 			window.add_even_listener_count_sec_auto[name] = 1;
 		} else if (window.add_even_listener_count_sec_auto[name] == 5) {
@@ -132,7 +132,7 @@ const TabInitJS = `
 		}
 	}
 	
-	// hook dom0 级事件监听
+	// Hook DOM level 0 event listeners.
 	Object.defineProperties(HTMLElement.prototype, {
 		onclick: {set: function(newValue){onclick = newValue;dom0_listener_hook(this, "click");}},
 		onchange: {set: function(newValue){onchange = newValue;dom0_listener_hook(this, "change");}},
@@ -176,7 +176,7 @@ const TabInitJS = `
 	//};
 	//Object.defineProperty(window,"setTimeout",{"writable": false, "configurable": false});
 	
-	// hook setInterval 时间设置为60秒 目的是减轻chrome的压力
+	// Hook setInterval with a 60 second interval to reduce load on Chrome.
 	window.__originalSetInterval = window.setInterval;
 	window.setInterval = function() {
 		arguments[1] = 60000;
@@ -184,7 +184,7 @@ const TabInitJS = `
 	};
 	Object.defineProperty(window,"setInterval",{"writable": false, "configurable": false});
 	
-	// 劫持原生ajax，并对每个请求设置最大请求次数
+	// Intercept native XHR and cap the number of requests.
 	window.ajax_req_count_sec_auto = {};
 	XMLHttpRequest.prototype.__originalOpen = XMLHttpRequest.prototype.open;
 	XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
@@ -220,7 +220,7 @@ const TabInitJS = `
 	}
 	Object.defineProperty(XMLHttpRequest.prototype,"abort",{"writable": false, "configurable": false});
 	
-	// 打乱数组的方法
+	// Shuffle an array.
 	window.randArr = function (arr) {
 		for (var i = 0; i < arr.length; i++) {
 			var iRand = parseInt(arr.length * Math.random());

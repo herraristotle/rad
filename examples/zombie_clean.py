@@ -2,7 +2,7 @@
 # coding: utf-8
 
 """
-    author: 猪猪侠 https://github.com/ring04h
+    author: ring04h https://github.com/ring04h
 
 """
 

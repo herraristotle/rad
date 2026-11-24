@@ -247,7 +247,7 @@ func SetFormValues() *cli.StringSliceFlag {
 	}
 }
 
-// 根据关键词自行选择填充文本
+// Pick fill text by keyword.
 func SetFormKeywordValue() *cli.StringSliceFlag {
 	return &cli.StringSliceFlag{
 		Name:        "form-keyword-values",

@@ -25,7 +25,7 @@ func TestTaskConfigOptFunc(t *testing.T) {
 		fn(&taskConf)
 	}
 
-	// 应该都要等于默认配置
+	// All of these should equal the defaults.
 	assert.Equal(t, taskConf.TabRunTimeout, config.TabRunTimeout)
 	assert.Equal(t, taskConf.MaxTabsCount, config.MaxTabsCount)
 	assert.Equal(t, taskConf.MaxCrawlCount, config.MaxCrawlCount)
@@ -35,10 +35,10 @@ func TestTaskConfigOptFunc(t *testing.T) {
 	assert.Equal(t, taskConf.EventTriggerMode, config.DefaultEventTriggerMode)
 	assert.Equal(t, taskConf.IgnoreKeywords, config.DefaultIgnoreKeywords)
 
-	// 重设超时时间
+	// Reset the timeout.
 	taskConf.TabRunTimeout = time.Minute * 5
 
-	// 企图覆盖自定义的时间, 不应该允许, 程序初始化时只能配置一次, 先由用户配置
+	// Overriding a user-set timeout must not be allowed: defaults apply once, and the user's value wins.
 	pkg.WithTabRunTimeout(time.Second * 5)(&taskConf)
 	assert.NotEqual(t, taskConf.TabRunTimeout, time.Second*5)
 	assert.NotEqual(t, taskConf.TabRunTimeout, config.TabRunTimeout)
